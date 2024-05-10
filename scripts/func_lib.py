@@ -66,6 +66,27 @@ async def output_eq_write(port: ports.GenericL23Port, lane: int, db: int, cursor
     else:
         print(f"  Write operation failed. (Wrote {db} dB but read {_read})")
 
+async def output_eq_read(port: ports.GenericL23Port, lane: int, cursor: Cursor, logger: logging.Logger):
+    assert 1<=lane<=8
+
+    # find byte address based on lane index and Pre/Post/Amplitude
+    _reg_addr = math.ceil(lane/2) + 161 + int(cursor.value*4)
+    
+    _is_upper_lane = False
+    if lane % 2 == 0: # upper lane, value should update bit 7-4
+        _is_upper_lane = True
+
+    # read the byte from the address
+    resp = await port.transceiver.access_rw_seq(page_address=0x10, register_address=_reg_addr, byte_count=1).get()
+    _tmp = int(resp.value, 16) # convert the existing byte value from hex string to int
+    if _is_upper_lane:
+        _tmp &= 0xF0 # take the bit 7-4 of the read
+        _read = _tmp >> 4
+    else:
+        _tmp &= 0x0F # take the bit 7-4 of the read
+        _read = _tmp
+    print(f"Port {port.kind.module_id}/{port.kind.port_id}: Read {_read} dB from {cursor.name} - Lane {lane} ")
+
 async def app_sel(port: ports.GenericL23Port, lane: int, appsel_code: int, dp_id: int, explicit_ctrl: int, logger: logging.Logger):
     print(f"Port {port.kind.module_id}/{port.kind.port_id}: Write AppSelCode={appsel_code}, DataPathID={dp_id}, ExplicitControl={explicit_ctrl} - Lane {lane} ")
     assert 1<=lane<=8

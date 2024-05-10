@@ -5,7 +5,7 @@ from xoa_driver.hlfuncs import mgmt, anlt
 from xoa_driver.lli import commands
 from xoa_driver.misc import Hex
 from type import *
-from scripts.func_lib import *
+from func_lib import *
 
 from typing import Generator, Optional, Union, List, Dict, Any
 import logging
@@ -48,6 +48,7 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
     print(f"Target PRBS BER:     {target_ber}")
     print(f"#####################################################################")
 
+    # connect to the tester
     tester = await testers.L23Tester(chassis_ip, username)
     
     # access module on the tester
@@ -198,6 +199,7 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
         print(f"FAILED: amp = {_amp_db} dB, pre = {_pre_db} dB, post = {_post_db} dB")
         print(f"#####################################################################")
 
+    # disconnect from the tester
     await tester.session.logoff()
 
 if __name__ == "__main__":
