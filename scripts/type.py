@@ -1,7 +1,7 @@
 from xoa_driver import testers, modules, ports, enums
 from typing import Generator, Optional, Union, List, Dict, Any
 
-#region unions
+
 FREYA_PORT_UNION = (
     ports.PFreya800G1S1P_a,
     ports.PFreya800G1S1P_b,
@@ -20,6 +20,7 @@ FREYA_PORT_UNION = (
     ports.PFreya800G4S1POSFP_e,
     ports.PFreya800G4S1POSFP_f,
 )
+
 FreyaPortType = Union[
     ports.PFreya800G1S1P_a,
     ports.PFreya800G1S1P_b,
@@ -38,6 +39,7 @@ FreyaPortType = Union[
     ports.PFreya800G4S1POSFP_e,
     ports.PFreya800G4S1POSFP_f,
 ]
+
 FREYA_MODULE_UNION = Union[
     modules.MFreya800G1S1P_a,
     modules.MFreya800G1S1P_b,
@@ -88,5 +90,3 @@ FREYA_MODULE_UNION = Union[
     modules.MFreya800G4S1POSFP_e_g2,
     modules.MFreya800G4S1POSFP_f_g2,
 ]
-
-#endregion
