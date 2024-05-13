@@ -1,3 +1,7 @@
+# *************************************
+# author: leonard.yu@teledyne.com
+# *************************************
+
 from enum import IntEnum
 
 class Cursor(IntEnum):

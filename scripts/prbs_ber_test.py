@@ -1,3 +1,8 @@
+
+# *************************************
+# author: leonard.yu@teledyne.com
+# *************************************
+
 import asyncio
 
 from xoa_driver import testers, modules, ports, enums
@@ -19,7 +24,7 @@ USERNAME = "xoa"
 AMP_INIT = 0
 PRE_INIT = 0
 POST_INIT = 0
-TARGET_BER = 1.1e-9
+TARGET_BER = 1.0e-9
 WAIT_TIME = 2
 
 async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_init: int, pre_init: int, post_init: int, target_ber: float):
@@ -97,10 +102,7 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
     # check if PRBS BER is less equal to target BER
     _current_prbs_ber = await read_prbs_ber(port=port_1, lane=lane, logger=logger)
     if less_equal(_current_prbs_ber, target_ber):
-        print(f"#####################################################################")
-        print(f"Current PRBS BER: {'{0:.3e}'.format(_current_prbs_ber)}, Target PRBS BER: {target_ber}")
-        print(f"SUCCESS: amp = {_amp_db} dB, pre = {_pre_db} dB, post = {_post_db} dB")
-        print(f"#####################################################################")
+        await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True)
         return
     else:
         _prev_prbs_ber = _current_prbs_ber
@@ -108,7 +110,7 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
 
         # algorithm - adjust amplitude and check PRBS stats on port 1
         print(f"|----------------------|")
-        print(f"|   Begin AMPLITUDE    |")
+        print(f"|   Adjust AMPLITUDE   |")
         print(f"|----------------------|")
         while _amp_db<7:
             _amp_db += 1
@@ -120,10 +122,7 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
             
             # if current BER <= target BER, mark done and finish
             if less_equal(_current_prbs_ber, target_ber):
-                print(f"#####################################################################")
-                print(f"Current PRBS BER: {'{0:.3e}'.format(_current_prbs_ber)}, Target PRBS BER: {target_ber}")
-                print(f"SUCCESS: amp = {_amp_db} dB, pre = {_pre_db} dB, post = {_post_db} dB")
-                print(f"#####################################################################")
+                await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True)
                 return
             # if target BER < current BER <= prev BER, continue the searching
             elif less_equal(_current_prbs_ber, _prev_prbs_ber):
@@ -131,13 +130,13 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
             # if prev BER < current BER. roll back and move on to pre-cursor
             else:
                 _amp_db -= 1
-            await output_eq_write(port=port_1, lane=lane, db=_amp_db, cursor=Cursor.AMPLITUDE, logger=logger)
-            break
+                await output_eq_write(port=port_1, lane=lane, db=_amp_db, cursor=Cursor.AMPLITUDE, logger=logger)
+                break
         await asyncio.sleep(WAIT_TIME)
 
         # algorithm - adjust pre-cursor and check PRBS stats on port 1
         print(f"|----------------------|")
-        print(f"|   Begin PRE-CURSOR   |")
+        print(f"|   Adjust PRE-CURSOR  |")
         print(f"|----------------------|")
         while _pre_db<7:
             _pre_db += 1
@@ -149,10 +148,7 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
             
             # if current BER <= target BER, mark done and finish
             if less_equal(_current_prbs_ber, target_ber):
-                print(f"#####################################################################")
-                print(f"Current PRBS BER: {'{0:.3e}'.format(_current_prbs_ber)}, Target PRBS BER: {target_ber}")
-                print(f"SUCCESS: amp = {_amp_db} dB, pre = {_pre_db} dB, post = {_post_db} dB")
-                print(f"#####################################################################")
+                await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True)
                 return
             # if target BER < current BER <= prev BER, continue the searching
             elif less_equal(_current_prbs_ber, _prev_prbs_ber):
@@ -160,13 +156,13 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
             # if prev BER < current BER. roll back and move on to pre-cursor
             else:
                 _pre_db -= 1
-            await output_eq_write(port=port_1, lane=lane, db=_pre_db, cursor=Cursor.PRECURSOR, logger=logger)
-            break
+                await output_eq_write(port=port_1, lane=lane, db=_pre_db, cursor=Cursor.PRECURSOR, logger=logger)
+                break
         await asyncio.sleep(WAIT_TIME)
 
         # algorithm - adjust post-cursor and check PRBS stats on port 1
         print(f"|----------------------|")
-        print(f"|  Begin POST-CURSOR   |")
+        print(f"|  Adjust POST-CURSOR  |")
         print(f"|----------------------|")
         while _post_db<7:
             _post_db += 1
@@ -178,10 +174,7 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
             
             # if current BER <= target BER, mark done and finish
             if less_equal(_current_prbs_ber, target_ber):
-                print(f"#####################################################################")
-                print(f"Current PRBS BER: {'{0:.3e}'.format(_current_prbs_ber)}, Target PRBS BER: {target_ber}")
-                print(f"SUCCESS: amp = {_amp_db} dB, pre = {_pre_db} dB, post = {_post_db} dB")
-                print(f"#####################################################################")
+                await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True)
                 return
             # if target BER < current BER <= prev BER, continue the searching
             elif less_equal(_current_prbs_ber, _prev_prbs_ber):
@@ -189,15 +182,12 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
             # if prev BER < current BER. roll back and move on to pre-cursor
             else:
                 _post_db -= 1
-            await output_eq_write(port=port_1, lane=lane, db=_post_db, cursor=Cursor.POSTCURSOR, logger=logger)
-            break
+                await output_eq_write(port=port_1, lane=lane, db=_post_db, cursor=Cursor.POSTCURSOR, logger=logger)
+                break
         await asyncio.sleep(WAIT_TIME)
 
         # searching failed
-        print(f"#####################################################################")
-        print(f"Current PRBS BER: {'{0:.3e}'.format(_current_prbs_ber)}, Target PRBS BER: {target_ber}")
-        print(f"FAILED: amp = {_amp_db} dB, pre = {_pre_db} dB, post = {_post_db} dB")
-        print(f"#####################################################################")
+        await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=False)
 
     # disconnect from the tester
     await tester.session.logoff()
