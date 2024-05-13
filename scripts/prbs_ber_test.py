@@ -4,6 +4,7 @@
 # *************************************
 
 import asyncio
+import sys
 
 from xoa_driver import testers, modules, ports, enums
 from xoa_driver.hlfuncs import mgmt, anlt
@@ -198,4 +199,18 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
     await tester.session.logoff()
 
 if __name__ == "__main__":
-    asyncio.run(main(CHASSIS_IP, P0, P1, LANE, USERNAME, AMP_INIT, PRE_INIT, POST_INIT, TARGET_BER))
+    if len(sys.argv) == 9:
+        chassis_ip = sys.argv[1]
+        p0 = sys.argv[2]
+        p1 = sys.argv[3]
+        lane = int(sys.argv[4])
+        username = sys.argv[5]
+        amp_init = int(sys.argv[6])
+        pre_init = int(sys.argv[7])
+        post_init = int(sys.argv[8])
+        target_ber = float(sys.argv[9])
+        asyncio.run(main(chassis_ip, p0, p1, lane, username, amp_init, pre_init, post_init, target_ber))
+    elif len(sys.argv) == 1:
+        asyncio.run(main(CHASSIS_IP, P0, P1, LANE, USERNAME, AMP_INIT, PRE_INIT, POST_INIT, TARGET_BER))
+    else:
+        print(f"Not enough parameters")
