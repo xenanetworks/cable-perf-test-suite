@@ -233,10 +233,10 @@ async def read_prbs_ber(port: ports.GenericL23Port, lane: int, logger: logging.L
     _prbs_errors = resp.error_count
     if _prbs_errors == 0:
         _prbs_ber = 4.6/_prbs_bits
-        print(f"PRBS BER [{lane}]: < {'{0:.3e}'.format(_prbs_ber)}")
+        print(f"  PRBS BER [{lane}]: < {'{0:.3e}'.format(_prbs_ber)}")
     else:
         _prbs_ber = _prbs_errors/_prbs_bits
-        print(f"PRBS BER [{lane}]: {'{0:.3e}'.format(_prbs_ber)}")
+        print(f"  PRBS BER [{lane}]: {'{0:.3e}'.format(_prbs_ber)}")
     return _prbs_ber
     
 def less_equal(current: float, target:float) -> bool:

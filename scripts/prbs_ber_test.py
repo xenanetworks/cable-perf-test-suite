@@ -126,8 +126,9 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
                 return
             # if target BER < current BER <= prev BER, continue the searching
             elif less_equal(_current_prbs_ber, _prev_prbs_ber):
+                _prev_prbs_ber = _current_prbs_ber
                 continue
-            # if prev BER < current BER. roll back and move on to pre-cursor
+            # if current BER > prev BER, roll back and move on to pre-cursor
             else:
                 _amp_db -= 1
                 await output_eq_write(port=port_1, lane=lane, db=_amp_db, cursor=Cursor.AMPLITUDE, logger=logger)
@@ -152,8 +153,9 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
                 return
             # if target BER < current BER <= prev BER, continue the searching
             elif less_equal(_current_prbs_ber, _prev_prbs_ber):
+                _prev_prbs_ber = _current_prbs_ber
                 continue
-            # if prev BER < current BER. roll back and move on to pre-cursor
+            # if current BER > prev BER, roll back and move on to pre-cursor
             else:
                 _pre_db -= 1
                 await output_eq_write(port=port_1, lane=lane, db=_pre_db, cursor=Cursor.PRECURSOR, logger=logger)
@@ -178,8 +180,9 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
                 return
             # if target BER < current BER <= prev BER, continue the searching
             elif less_equal(_current_prbs_ber, _prev_prbs_ber):
+                _prev_prbs_ber = _current_prbs_ber
                 continue
-            # if prev BER < current BER. roll back and move on to pre-cursor
+            # if current BER > prev BER, roll back and move on to pre-cursor
             else:
                 _post_db -= 1
                 await output_eq_write(port=port_1, lane=lane, db=_post_db, cursor=Cursor.POSTCURSOR, logger=logger)
@@ -187,6 +190,8 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
         await asyncio.sleep(WAIT_TIME)
 
         # searching failed
+        # read the current BER
+        _current_prbs_ber = await read_prbs_ber(port=port_1, lane=lane, logger=logger)
         await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=False)
 
     # disconnect from the tester
