@@ -199,7 +199,7 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
     await tester.session.logoff()
 
 if __name__ == "__main__":
-    if len(sys.argv) == 9:
+    if len(sys.argv) == 10:
         chassis_ip = sys.argv[1]
         p0 = sys.argv[2]
         p1 = sys.argv[3]
