@@ -25,7 +25,7 @@ USERNAME = "xoa"
 AMP_INIT = 0
 PRE_INIT = 0
 POST_INIT = 0
-TARGET_BER = 1.0e-9
+TARGET_BER = 1.2e-9
 WAIT_TIME = 2
 
 async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_init: int, pre_init: int, post_init: int, target_ber: float):
@@ -62,9 +62,17 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
     module_1 = tester.modules.obtain(_mid_1)
 
     # the module must be a freya module
-    if not isinstance(module_0, FREYA_MODULE_UNION):
+    # if not isinstance(module_0, FREYA_MODULE_UNION):
+    #     return None
+    # if not isinstance(module_1, FREYA_MODULE_UNION):
+    #     return None
+    resp0 = await module_0.revision.get()
+    resp1 = await module_1.revision.get()
+    if resp0.revision.find("Freya") == -1:
+        print(f"Port {p0} is not a Freya port. Abort")
         return None
-    if not isinstance(module_1, FREYA_MODULE_UNION):
+    if resp1.revision.find("Freya") == -1:
+        print(f"Port {p1} is not a Freya port. Abort")
         return None
     
     # get the port object
