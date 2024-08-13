@@ -8,7 +8,6 @@ from xoa_driver import testers, modules, ports, enums
 from xoa_driver.hlfuncs import mgmt, anlt
 from xoa_driver.lli import commands
 from xoa_driver.misc import Hex
-from type import *
 from func_lib import *
 
 from typing import Generator, Optional, Union, List, Dict, Any
@@ -52,9 +51,9 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str):
     module_1 = tester.modules.obtain(_mid_1)
 
     # the module must be a freya module
-    if not isinstance(module_0, FREYA_MODULE_UNION):
+    if not isinstance(module_0, modules.Z800FreyaModule):
         return None
-    if not isinstance(module_1, FREYA_MODULE_UNION):
+    if not isinstance(module_1, modules.Z800FreyaModule):
         return None
     
     # get the port object

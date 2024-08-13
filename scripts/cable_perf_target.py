@@ -1,7 +1,12 @@
 
-# *************************************
-# author: leonard.yu@teledyne.com
-# *************************************
+
+################################################################
+#
+#                   TARGET CABLE PERFORMANCE
+#
+#
+#
+################################################################
 
 import asyncio
 import sys
@@ -28,31 +33,39 @@ POST_INIT = 0
 TARGET_BER = 1.2e-9
 WAIT_TIME = 2
 
-async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_init: int, pre_init: int, post_init: int, target_ber: float):
+async def cable_perf_target(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_init: int, pre_init: int, post_init: int, target_ber: float):
     
+    # configure basic logger
+    logger = logging.getLogger("cable_perf_target")
+    logging.basicConfig(
+        format="%(asctime)s  %(message)s",
+        level=logging.DEBUG,
+        handlers=[
+            logging.FileHandler(filename="cable_perf_target.log", mode="a"),
+            logging.StreamHandler()]
+        )
+    
+    # get module indices and port indices
     _mid_0 = int(p0.split("/")[0])
     _pid_0 = int(p0.split("/")[1])
     _mid_1 = int(p1.split("/")[0])
     _pid_1 = int(p1.split("/")[1])
 
-    logger = logging.getLogger('cable_test')
-    logging.basicConfig(level=logging.DEBUG)
-
     if not 1<=lane<=8:
         logger.warning(f"Lane must in range[1,8]")
         return
 
-    print(f"#####################################################################")
-    print(f"Chassis:            {chassis_ip}")
-    print(f"Username:           {username}")
-    print(f"PRBS TX Port:       {p0}")
-    print(f"PRBS RX Port:       {p1}")
-    print(f"Lane:               {lane}")
-    print(f"Initial Amplitude:   {amp_init} dB")
-    print(f"Initial PreCursor:   {pre_init} dB")
-    print(f"Initial PostCursor:  {post_init} dB")
-    print(f"Target PRBS BER:     {target_ber}")
-    print(f"#####################################################################")
+    logger.info(f"#####################################################################")
+    logger.info(f"Chassis:            {chassis_ip}")
+    logger.info(f"Username:           {username}")
+    logger.info(f"PRBS TX Port:       {p0}")
+    logger.info(f"PRBS RX Port:       {p1}")
+    logger.info(f"Lane:               {lane}")
+    logger.info(f"Initial Amplitude:   {amp_init} dB")
+    logger.info(f"Initial PreCursor:   {pre_init} dB")
+    logger.info(f"Initial PostCursor:  {post_init} dB")
+    logger.info(f"Target PRBS BER:     {target_ber}")
+    logger.info(f"#####################################################################")
 
     # connect to the tester
     tester = await testers.L23Tester(chassis_ip, username)
@@ -62,17 +75,11 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
     module_1 = tester.modules.obtain(_mid_1)
 
     # the module must be a freya module
-    # if not isinstance(module_0, FREYA_MODULE_UNION):
-    #     return None
-    # if not isinstance(module_1, FREYA_MODULE_UNION):
-    #     return None
-    resp0 = await module_0.revision.get()
-    resp1 = await module_1.revision.get()
-    if resp0.revision.find("Freya") == -1:
-        print(f"Port {p0} is not a Freya port. Abort")
+    if not isinstance(module_0, modules.Z800FreyaModule):
+        logger.warning(f"Port {p0} is not a Freya port. Abort")
         return None
-    if resp1.revision.find("Freya") == -1:
-        print(f"Port {p1} is not a Freya port. Abort")
+    if not isinstance(module_1, modules.Z800FreyaModule):
+        logger.warning(f"Port {p1} is not a Freya port. Abort")
         return None
     
     # get the port object
@@ -100,9 +107,9 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
     _amp_db = amp_init
     _pre_db = pre_init
     _post_db = post_init
-    print(f"|----------------------|")
-    print(f"|  Initial dB Values   |")
-    print(f"|----------------------|")
+    logger.info(f"|----------------------|")
+    logger.info(f"|  Initial dB Values   |")
+    logger.info(f"|----------------------|")
     await output_eq_write(port=port_1, lane=lane, db=_amp_db, cursor=Cursor.AMPLITUDE, logger=logger)
     await output_eq_write(port=port_1, lane=lane, db=_pre_db, cursor=Cursor.PRECURSOR, logger=logger)
     await output_eq_write(port=port_1, lane=lane, db=_post_db, cursor=Cursor.POSTCURSOR, logger=logger)
@@ -111,16 +118,16 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
     # check if PRBS BER is less equal to target BER
     _current_prbs_ber = await read_prbs_ber(port=port_1, lane=lane, logger=logger)
     if less_equal(_current_prbs_ber, target_ber):
-        await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True)
+        await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True, logger=logger)
         return
     else:
         _prev_prbs_ber = _current_prbs_ber
         await asyncio.sleep(WAIT_TIME)
 
         # algorithm - adjust amplitude and check PRBS stats on port 1
-        print(f"|----------------------|")
-        print(f"|   Adjust AMPLITUDE   |")
-        print(f"|----------------------|")
+        logger.info(f"|----------------------|")
+        logger.info(f"|   Adjust AMPLITUDE   |")
+        logger.info(f"|----------------------|")
         while _amp_db<7:
             _amp_db += 1
             await output_eq_write(port=port_1, lane=lane, db=_amp_db, cursor=Cursor.AMPLITUDE, logger=logger)
@@ -131,7 +138,7 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
             
             # if current BER <= target BER, mark done and finish
             if less_equal(_current_prbs_ber, target_ber):
-                await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True)
+                await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True, logger=logger)
                 return
             # if target BER < current BER <= prev BER, continue the searching
             elif less_equal(_current_prbs_ber, _prev_prbs_ber):
@@ -145,9 +152,9 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
         await asyncio.sleep(WAIT_TIME)
 
         # algorithm - adjust pre-cursor and check PRBS stats on port 1
-        print(f"|----------------------|")
-        print(f"|   Adjust PRE-CURSOR  |")
-        print(f"|----------------------|")
+        logger.info(f"|----------------------|")
+        logger.info(f"|   Adjust PRE-CURSOR  |")
+        logger.info(f"|----------------------|")
         while _pre_db<7:
             _pre_db += 1
             await output_eq_write(port=port_1, lane=lane, db=_pre_db, cursor=Cursor.PRECURSOR, logger=logger)
@@ -158,7 +165,7 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
             
             # if current BER <= target BER, mark done and finish
             if less_equal(_current_prbs_ber, target_ber):
-                await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True)
+                await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True, logger=logger)
                 return
             # if target BER < current BER <= prev BER, continue the searching
             elif less_equal(_current_prbs_ber, _prev_prbs_ber):
@@ -172,9 +179,9 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
         await asyncio.sleep(WAIT_TIME)
 
         # algorithm - adjust post-cursor and check PRBS stats on port 1
-        print(f"|----------------------|")
-        print(f"|  Adjust POST-CURSOR  |")
-        print(f"|----------------------|")
+        logger.info(f"|----------------------|")
+        logger.info(f"|  Adjust POST-CURSOR  |")
+        logger.info(f"|----------------------|")
         while _post_db<7:
             _post_db += 1
             await output_eq_write(port=port_1, lane=lane, db=_post_db, cursor=Cursor.POSTCURSOR, logger=logger)
@@ -185,7 +192,7 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
             
             # if current BER <= target BER, mark done and finish
             if less_equal(_current_prbs_ber, target_ber):
-                await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True)
+                await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True, logger=logger)
                 return
             # if target BER < current BER <= prev BER, continue the searching
             elif less_equal(_current_prbs_ber, _prev_prbs_ber):
@@ -201,7 +208,7 @@ async def main(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_
         # searching failed
         # read the current BER
         _current_prbs_ber = await read_prbs_ber(port=port_1, lane=lane, logger=logger)
-        await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=False)
+        await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=False, logger=logger)
 
     # disconnect from the tester
     await tester.session.logoff()
@@ -217,8 +224,8 @@ if __name__ == "__main__":
         pre_init = int(sys.argv[7])
         post_init = int(sys.argv[8])
         target_ber = float(sys.argv[9])
-        asyncio.run(main(chassis_ip, p0, p1, lane, username, amp_init, pre_init, post_init, target_ber))
+        asyncio.run(cable_perf_target(chassis_ip, p0, p1, lane, username, amp_init, pre_init, post_init, target_ber))
     elif len(sys.argv) == 1:
-        asyncio.run(main(CHASSIS_IP, P0, P1, LANE, USERNAME, AMP_INIT, PRE_INIT, POST_INIT, TARGET_BER))
+        asyncio.run(cable_perf_target(CHASSIS_IP, P0, P1, LANE, USERNAME, AMP_INIT, PRE_INIT, POST_INIT, TARGET_BER))
     else:
         print(f"Not enough parameters")

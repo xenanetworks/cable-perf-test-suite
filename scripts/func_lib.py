@@ -9,7 +9,6 @@ from xoa_driver import testers, modules, ports, enums
 from xoa_driver.hlfuncs import mgmt, anlt
 from xoa_driver.lli import commands
 from xoa_driver.misc import Hex
-from type import *
 from enums import *
 
 from typing import Generator, Optional, Union, List, Dict, Any, Tuple
@@ -29,7 +28,7 @@ async def stop_auto_dp_init(port: ports.GenericL23Port, logger: logging.Logger):
     :param logger: logger object
     :type logger: logging.Logger
     """
-    print(f"Port {port.kind.module_id}/{port.kind.port_id}: Stop Auto Data Path Init of the Module (Write address 128 value 0xFF)")
+    logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Stop Auto Data Path Init of the Module (Write address 128 value 0xFF)")
     await port.transceiver.access_rw_seq(page_address=0x10, register_address=128, byte_count=1).set(value=Hex("FF"))
     await asyncio.sleep(1)
 
@@ -45,7 +44,7 @@ async def apply_dp_init(port: ports.GenericL23Port, logger: logging.Logger):
     :param logger: logger object
     :type logger: logging.Logger
     """
-    print(f"Port {port.kind.module_id}/{port.kind.port_id}: Apply Data Path Init (Write address 143 value 0xFF)")
+    logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Apply Data Path Init (Write address 143 value 0xFF)")
     await port.transceiver.access_rw_seq(page_address=0x10, register_address=143, byte_count=1).set(value=Hex("FF"))
     await asyncio.sleep(1)
 
@@ -61,7 +60,7 @@ async def activate_dp(port: ports.GenericL23Port, logger: logging.Logger):
     :param logger: logger object
     :type logger: logging.Logger
     """
-    print(f"Port {port.kind.module_id}/{port.kind.port_id}: Activate Data Path (Write address 128 with value 0x00)")
+    logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Activate Data Path (Write address 128 with value 0x00)")
     await port.transceiver.access_rw_seq(page_address=0x10, register_address=128, byte_count=1).set(value=Hex("00"))
     await asyncio.sleep(1)
 
@@ -83,7 +82,7 @@ async def output_eq_write(port: ports.GenericL23Port, lane: int, db: int, cursor
     :param logger: logger object
     :type logger: logging.Logger
     """
-    print(f"Port {port.kind.module_id}/{port.kind.port_id}: Write {db} dB to {cursor.name} - Lane {lane} ")
+    logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Write {db} dB to {cursor.name} - Lane {lane} ")
     assert 1<=lane<=8
     assert 0<=db<=7
 
@@ -123,9 +122,9 @@ async def output_eq_write(port: ports.GenericL23Port, lane: int, db: int, cursor
         _tmp &= 0x0F # take the bit 7-4 of the read
         _read = _tmp
     if _read == db:
-        print(f"  Write operation successful")
+        logger.info(f"  Write operation successful")
     else:
-        print(f"  Write operation failed. (Wrote {db} dB but read {_read})")
+        logger.info(f"  Write operation failed. (Wrote {db} dB but read {_read})")
 
 # *************************************************************************************
 # func: output_eq_read
@@ -162,7 +161,7 @@ async def output_eq_read(port: ports.GenericL23Port, lane: int, cursor: Cursor, 
     else:
         _tmp &= 0x0F # take the bit 7-4 of the read
         _read = _tmp
-    print(f"Port {port.kind.module_id}/{port.kind.port_id}: Read {_read} dB from {cursor.name} - Lane {lane} ")
+    logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Read {_read} dB from {cursor.name} - Lane {lane} ")
 
 # *************************************************************************************
 # func: app_sel
@@ -184,7 +183,7 @@ async def app_sel(port: ports.GenericL23Port, lane: int, appsel_code: int, dp_id
     :param logger: logger object
     :type logger: logging.Logger
     """
-    print(f"Port {port.kind.module_id}/{port.kind.port_id}: Write AppSelCode={appsel_code}, DataPathID={dp_id}, ExplicitControl={explicit_ctrl} - Lane {lane} ")
+    logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Write AppSelCode={appsel_code}, DataPathID={dp_id}, ExplicitControl={explicit_ctrl} - Lane {lane} ")
     assert 1<=lane<=8
     assert 0<=appsel_code<=15
     assert 0<=dp_id<=7
@@ -203,9 +202,9 @@ async def app_sel(port: ports.GenericL23Port, lane: int, appsel_code: int, dp_id
     await asyncio.sleep(1)
     _tmp2 = int(resp.value, 16) # convert the existing byte value from hex string to int
     if _tmp2 == _tmp:
-        print(f"  Write operation successful")
+        logger.info(f"  Write operation successful")
     else:
-        print(f"  Write operation failed. (Wrote 0x{_tmp} but read 0x{_tmp2})")
+        logger.info(f"  Write operation failed. (Wrote 0x{_tmp} but read 0x{_tmp2})")
 
 # *************************************************************************************
 # func: read_prbs_ber
@@ -232,11 +231,12 @@ async def read_prbs_ber(port: ports.GenericL23Port, lane: int, logger: logging.L
     _prbs_bits = resp.byte_count * 8
     _prbs_errors = resp.error_count
     if _prbs_errors == 0:
-        _prbs_ber = 4.6/_prbs_bits
-        print(f"  PRBS BER [{lane}]: < {'{0:.3e}'.format(_prbs_ber)}")
+        # _prbs_ber = 4.6/_prbs_bits
+        _prbs_ber = 0
+        logger.info(f"  PRBS BER [{lane}]: < {'{0:.3e}'.format(_prbs_ber)}")
     else:
         _prbs_ber = _prbs_errors/_prbs_bits
-        print(f"  PRBS BER [{lane}]: {'{0:.3e}'.format(_prbs_ber)}")
+        logger.info(f"  PRBS BER [{lane}]: {'{0:.3e}'.format(_prbs_ber)}")
     return _prbs_ber
     
 def less_equal(current: float, target:float) -> bool:
@@ -249,7 +249,7 @@ def less_equal(current: float, target:float) -> bool:
 # func: test_done
 # description: Show test result and stop PRBS
 # *************************************************************************************
-async def test_done(port: ports.GenericL23Port, lane: int, current_ber: float, target_ber: float, amp_db: int, pre_db: int, post_db: int, is_successful: bool):
+async def test_done(port: ports.GenericL23Port, lane: int, current_ber: float, target_ber: float, amp_db: int, pre_db: int, post_db: int, is_successful: bool, logger: logging.Logger):
     """Show test result and stop PRBS
 
     :param port: port object
@@ -269,11 +269,11 @@ async def test_done(port: ports.GenericL23Port, lane: int, current_ber: float, t
     :param is_successful: flag
     :type is_successful: bool
     """
-    print(f"#####################################################################")
-    print(f"Lane: {lane}")
-    print(f"Current PRBS BER: {'{0:.3e}'.format(current_ber)}, Target PRBS BER: {target_ber}")
-    print(f"{'SUCCESS' if is_successful else 'FAILED'}: amp = {amp_db} dB, pre = {pre_db} dB, post = {post_db} dB")
-    print(f"#####################################################################")
+    logger.info(f"#####################################################################")
+    logger.info(f"Lane: {lane}")
+    logger.info(f"Current PRBS BER: {'{0:.3e}'.format(current_ber)}, Target PRBS BER: {target_ber}")
+    logger.info(f"{'SUCCESS' if is_successful else 'FAILED'}: amp = {amp_db} dB, pre = {pre_db} dB, post = {post_db} dB")
+    logger.info(f"#####################################################################")
 
     # stop PRBS on port
     _serdes = lane - 1
