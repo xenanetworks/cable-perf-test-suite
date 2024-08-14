@@ -1,19 +1,13 @@
 # ***********************************************************************************************
-# author: leonard.yu@teledyne.com
-# description: this library file contains functions for dp init, register rw, prbs ber read, etc.
+# this library file contains functions for dp init, register rw, prbs ber read, etc.
 # ***********************************************************************************************
 
 import asyncio
 
 from xoa_driver import testers, modules, ports, enums
-from xoa_driver.hlfuncs import mgmt, anlt
-from xoa_driver.lli import commands
 from xoa_driver.misc import Hex
 from enums import *
-
-from typing import Generator, Optional, Union, List, Dict, Any, Tuple
 import logging
-from contextlib import suppress
 import math
 
 # *************************************************************************************

@@ -1,24 +1,22 @@
-
 ################################################################
 #
 #                   OPTIMAL CABLE PERFORMANCE
+# 
+# This script uses exhaustive search to measure the PRBS BER on 
+# each transceiver cursor value combination. At the end, all 
+# results are sorted based on PRBS BER value with the best one 
+# on the top.
 #
-#
-#
+# 
 ################################################################
 
 import asyncio
 import sys
 
 from xoa_driver import testers, modules, ports, enums
-from xoa_driver.hlfuncs import mgmt, anlt
-from xoa_driver.lli import commands
-from xoa_driver.misc import Hex
+from xoa_driver.hlfuncs import mgmt
 from func_lib import *
-
-from typing import Generator, Optional, Union, List, Dict, Any
 import logging
-from contextlib import suppress
 
 #---------------------------
 # Global parameters
@@ -38,6 +36,9 @@ DELAY_AFTER_RESET = 2
 DELAY_AFTER_EQ_WRITE = 2
 PRBS_DURATION = 5
 
+#---------------------------
+# cable_perf_optimal
+#---------------------------
 async def cable_perf_optimal(chassis_ip: str, tx_port: str, rx_port: str, lane: int, username: str, amp_min: int, amp_max: int, pre_min: int, pre_max: int, post_min: int, post_max: int, delay_after_reset: int, delay_after_eq_write: int, prbs_duration: int):
 
     # configure basic logger
@@ -87,7 +88,7 @@ async def cable_perf_optimal(chassis_ip: str, tx_port: str, rx_port: str, lane: 
     logger.info(f"PostCursor Range:   [{post_min}, {post_max}] dB")
     logger.info(f"#####################################################################")
 
-    # connect to the tester
+    # connect to the tester and automatically disconnect when ended
     async with testers.L23Tester(host=chassis_ip, username=username, password="xena", port=22606, enable_logging=False) as tester_obj:
     
         # access module on the tester
