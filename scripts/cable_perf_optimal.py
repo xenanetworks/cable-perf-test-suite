@@ -78,14 +78,17 @@ async def cable_perf_optimal(chassis_ip: str, tx_port: str, rx_port: str, lane: 
         return
 
     logger.info(f"#####################################################################")
-    logger.info(f"Chassis:            {chassis_ip}")
-    logger.info(f"Username:           {username}")
-    logger.info(f"PRBS TX Port:       {tx_port}")
-    logger.info(f"PRBS RX Port:       {rx_port}")
-    logger.info(f"Lane:               {lane}")
-    logger.info(f"Amplitude Range:    [{amp_min}, {amp_max}] dB")
-    logger.info(f"PreCursor Range:    [{pre_min}, {pre_max}] dB")
-    logger.info(f"PostCursor Range:   [{post_min}, {post_max}] dB")
+    logger.info(f"Chassis:              {chassis_ip}")
+    logger.info(f"Username:             {username}")
+    logger.info(f"PRBS TX Port:         {tx_port}")
+    logger.info(f"PRBS RX Port:         {rx_port}")
+    logger.info(f"Lane:                 {lane}")
+    logger.info(f"Amplitude Range:      [{amp_min}, {amp_max}] dB")
+    logger.info(f"PreCursor Range:      [{pre_min}, {pre_max}] dB")
+    logger.info(f"PostCursor Range:     [{post_min}, {post_max}] dB")
+    logger.info(f"Delay After Reset:    {delay_after_reset} seconds")
+    logger.info(f"Delay After EQ Write: {delay_after_eq_write} seconds")
+    logger.info(f"PRBS Duration:        {prbs_duration} seconds")
     logger.info(f"#####################################################################")
 
     # connect to the tester and automatically disconnect when ended
