@@ -22,14 +22,14 @@ import logging
 CHASSIS_IP = "10.165.136.60"
 P0 = "3/0"
 P1 = "6/0"
-LANE = 1
+LANE = 1 # which lane to test, from 1 to 8
 USERNAME = "xoa"
-AMP_INIT = 0
-PRE_INIT = 0
-POST_INIT = 0
-TARGET_BER = 1.2e-9
-DELAY_AFTER_RESET = 2
-DELAY_AFTER_EQ_WRITE = 2
+AMP_INIT = 0 # min = 0 dB, max = 7 dB
+PRE_INIT = 0 # min = 0 dB, max = 7 dB
+POST_INIT = 0 # min = 0 dB, max = 7 dB
+TARGET_BER = 1.2e-9 # The target PRBS BER
+DELAY_AFTER_RESET = 2 # seconds
+DELAY_AFTER_EQ_WRITE = 2 # seconds
 
 #---------------------------
 # cable_perf_target

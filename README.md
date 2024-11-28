@@ -1,4 +1,4 @@
-# cable-perf-test-suite
+# Cable Performance Test Methodology
 
 This repo contains three scripts:
 * ``cable_perf_optimal.py`` uses exhaustive search to measure the PRBS BER on each transceiver cursor value combination. At the end, all results are sorted based on PRBS BER value with the best one on the top.

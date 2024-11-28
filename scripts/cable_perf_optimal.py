@@ -24,33 +24,22 @@ import logging
 CHASSIS_IP = "10.165.136.60"
 TX_PORT= "3/0"
 RX_PORT = "6/0"
-LANE = 1
+LANE = 1 # which lane to test, from 1 to 8
 USERNAME = "xoa"
-AMP_MIN = 0
-AMP_MAX = 7
-PRE_MIN = 0
-PRE_MAX = 7
-POST_MIN = 0
-POST_MAX= 7
-DELAY_AFTER_RESET = 2
-DELAY_AFTER_EQ_WRITE = 2
-PRBS_DURATION = 1
-
-# If the list is empty, pre-tuned values will be used
-HOST_SIDE_TAPS = []
-
-# If the list is not empty, the values will be used.
-# The list must have 5 values. They are in this order <pre3> <pre2> <pre> <main> <post>.
-# <main> is mV (must be integer), the others are dB (only 1 decimal digit allowed)
-# You try these values
-# HOST_SIDE_TAPS = [0.0, 0.0, 5.4, 998, 3.1]
-# HOST_SIDE_TAPS = [0.0, 0.0, 5.4, 998, 2.6]
-# HOST_SIDE_TAPS = [0.0, 0.0, 5.4, 998, 3.7]
+AMP_MIN = 0 # min = 0 dB
+AMP_MAX = 7 # max = 7 dB
+PRE_MIN = 0 # min = 0 dB
+PRE_MAX = 7 # max = 7 dB
+POST_MIN = 0 # min = 0 dB
+POST_MAX= 7 # max = 7 dB
+DELAY_AFTER_RESET = 2 # seconds
+DELAY_AFTER_EQ_WRITE = 2 # seconds
+PRBS_DURATION = 5 # seconds
 
 #---------------------------
 # cable_perf_optimal
 #---------------------------
-async def cable_perf_optimal(chassis_ip: str, tx_port: str, rx_port: str, lane: int, username: str, amp_min: int, amp_max: int, pre_min: int, pre_max: int, post_min: int, post_max: int, delay_after_reset: int, delay_after_eq_write: int, prbs_duration: int, host_side_tap_levels: list):
+async def cable_perf_optimal(chassis_ip: str, tx_port: str, rx_port: str, lane: int, username: str, amp_min: int, amp_max: int, pre_min: int, pre_max: int, post_min: int, post_max: int, delay_after_reset: int, delay_after_eq_write: int, prbs_duration: int):
 
     # configure basic logger
     logger = logging.getLogger("cable_perf_optimal")
@@ -131,37 +120,12 @@ async def cable_perf_optimal(chassis_ip: str, tx_port: str, rx_port: str, lane: 
         logger.info(f"Delay after reset: {delay_after_reset}s")
         await asyncio.sleep(delay_after_reset)
 
-        # from lane (1-8) to serdes (0-7)
-        _serdes = lane - 1
-
-        # load the pre-tuned tx tap values on host side (Xena cage)
-        if len(host_side_tap_levels) == 0:
-            logger.info(f"Load pre-tuned tx tap values on host side")
-            await tx_port_obj.serdes[_serdes].phy.autotune.set_off()
-            await tx_port_obj.serdes[_serdes].phy.autotune.set_on()
-            resp = await tx_port_obj.l1.serdes[_serdes].medium.tx.level.get()
-            logger.info(f"Read host-side lane {lane} (level):  pre3={resp.pre3/10} dB, pre2={resp.pre2/10} dB, pre={resp.pre/10} dB, main={resp.main} mV, post={resp.post/10} dB")
-            resp = await tx_port_obj.l1.serdes[_serdes].medium.tx.native.get()
-            logger.info(f"Read host-side lane {lane} (native): pre3={resp.pre3}, pre2={resp.pre2}, pre={resp.pre}, main={resp.main}, post={resp.post}")
-        # write tx tap values on host side (Xena cage)
-        elif len(host_side_tap_levels) == 5:
-            await tx_port_obj.l1.serdes[_serdes].medium.tx.level.set(
-                pre3=int(host_side_tap_levels[0]*10), 
-                pre2=int(host_side_tap_levels[1]*10), 
-                pre=int(host_side_tap_levels[2]*10), 
-                main=int(host_side_tap_levels[3]), 
-                post=int(host_side_tap_levels[4]*10))
-            logging.info(f"Write tx tap values to host side: pre3={host_side_tap_levels[0]} dB, pre2={host_side_tap_levels[1]} dB, pre={host_side_tap_levels[2]} dB, main={host_side_tap_levels[3]} mV, post={host_side_tap_levels[4]} dB")
-            resp = await tx_port_obj.l1.serdes[_serdes].medium.tx.level.get()
-            logger.info(f"Read host-side lane {lane} (level):  pre3={resp.pre3/10} dB, pre2={resp.pre2/10} dB, pre={resp.pre/10} dB, main={resp.main} mV, post={resp.post/10} dB")
-            resp = await tx_port_obj.l1.serdes[_serdes].medium.tx.native.get()
-            logger.info(f"Read host-side lane {lane} (native): pre3={resp.pre3}, pre2={resp.pre2}, pre={resp.pre}, main={resp.main}, post={resp.post}")
-
         # configure prbs
         await tx_port_obj.pcs_pma.prbs_config.type.set(prbs_inserted_type=enums.PRBSInsertedType.PHY_LINE, polynomial=enums.PRBSPolynomial.PRBS31, invert=enums.PRBSInvertState.NON_INVERTED, statistics_mode=enums.PRBSStatisticsMode.ACCUMULATIVE)
         await rx_port_obj.pcs_pma.prbs_config.type.set(prbs_inserted_type=enums.PRBSInsertedType.PHY_LINE, polynomial=enums.PRBSPolynomial.PRBS31, invert=enums.PRBSInvertState.NON_INVERTED, statistics_mode=enums.PRBSStatisticsMode.ACCUMULATIVE)
 
         # start prbs
+        _serdes = lane - 1
         await tx_port_obj.serdes[_serdes].prbs.tx_config.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
 
         # exhaustive search of all cursor combinations
@@ -219,24 +183,8 @@ if __name__ == "__main__":
         delay_after_reset = int(sys.argv[12])
         delay_after_eq_write = int(sys.argv[13])
         prbs_duration = int(sys.argv[14])
-        host_side_tap_levels = [sys.argv[15],sys.argv[16],sys.argv[17],sys.argv[18],sys.argv[19]]
-        asyncio.run(cable_perf_optimal(chassis_ip, tx_port, rx_port, lane, username, amp_min, amp_max, pre_min, pre_max, post_min, post_max, delay_after_reset, delay_after_eq_write, prbs_duration,host_side_tap_levels))
+        asyncio.run(cable_perf_optimal(chassis_ip, tx_port, rx_port, lane, username, amp_min, amp_max, pre_min, pre_max, post_min, post_max, delay_after_reset, delay_after_eq_write, prbs_duration))
     elif len(sys.argv) == 1:
-        asyncio.run(cable_perf_optimal(
-            chassis_ip=CHASSIS_IP, 
-            tx_port=TX_PORT, 
-            rx_port=RX_PORT, 
-            lane=LANE, 
-            username=USERNAME, 
-            amp_min=AMP_MIN, 
-            amp_max=AMP_MAX, 
-            pre_min=PRE_MIN, 
-            pre_max=PRE_MAX, 
-            post_min=POST_MIN, 
-            post_max=POST_MAX, 
-            delay_after_reset=DELAY_AFTER_RESET, 
-            delay_after_eq_write=DELAY_AFTER_EQ_WRITE, 
-            prbs_duration=PRBS_DURATION,
-            host_side_tap_levels=HOST_SIDE_TAPS))
+        asyncio.run(cable_perf_optimal(CHASSIS_IP, TX_PORT, RX_PORT, LANE, USERNAME, AMP_MIN, AMP_MAX, PRE_MIN, PRE_MAX, POST_MIN, POST_MAX, DELAY_AFTER_RESET, DELAY_AFTER_EQ_WRITE, PRBS_DURATION))
     else:
         print.info(f"Not enough parameters")
