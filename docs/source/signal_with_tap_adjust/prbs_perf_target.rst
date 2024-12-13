@@ -21,7 +21,7 @@ Method
 
 .. figure:: ../images/cable_test.png
 
-    Cable performance test illustration
+   Cable performance test illustration
 
 1. The TX port sends PRBS-31 test pattern to the RX port.
 2. Load ``<amp_init>``, ``<pre_init>``, and ``<post_init>`` on the RX port. 
