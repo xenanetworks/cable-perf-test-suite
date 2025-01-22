@@ -102,7 +102,7 @@ async def cable_perf_target(chassis_ip: str, p0: str, p1: str, lane: int, userna
 
         # start PRBS on port 0
         _serdes = lane - 1
-        await port_0.serdes[_serdes].prbs.tx_config.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
+        await port_0.l1.serdes[_serdes].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
 
         # write amp/pre/post to initial dB as a starting point
         _amp_db = amp_init

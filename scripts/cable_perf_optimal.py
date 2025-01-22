@@ -126,7 +126,7 @@ async def cable_perf_optimal(chassis_ip: str, tx_port: str, rx_port: str, lane: 
 
         # start prbs
         _serdes = lane - 1
-        await tx_port_obj.serdes[_serdes].prbs.tx_config.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
+        await tx_port_obj.l1.serdes[_serdes].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
 
         # exhaustive search of all cursor combinations
         result = []
@@ -157,7 +157,7 @@ async def cable_perf_optimal(chassis_ip: str, tx_port: str, rx_port: str, lane: 
         
         # stop prbs
         _serdes = lane - 1
-        await tx_port_obj.serdes[_serdes].prbs.tx_config.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
+        await tx_port_obj.l1.serdes[_serdes].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
 
         # find the best
         sorted_result = sorted(result, key = lambda x: x["prbs_ber"])
