@@ -6,22 +6,21 @@ import asyncio
 
 from xoa_driver import testers, modules, ports, enums
 from xoa_driver.misc import Hex
+from xoa_driver.hlfuncs import mgmt
 from enums import *
 import logging
 import math
+from typing_extensions import List, Any
 
 # *************************************************************************************
 # func: stop_auto_dp_init
 # description: Stop Auto Data Path Init of the Module (Write address 128 value 0xFF)
 # *************************************************************************************
-async def stop_auto_dp_init(port: ports.GenericL23Port, logger: logging.Logger):
+async def stop_auto_dp_init(port: ports.Z800FreyaPort, logger_name: str):
     """Stop Auto Data Path Init of the Module (Write address 128 value 0xFF)
-
-    :param port: port object
-    :type port: ports.GenericL23Port
-    :param logger: logger object
-    :type logger: logging.Logger
     """
+    # Get logger
+    logger = logging.getLogger(logger_name)
     logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Stop Auto Data Path Init of the Module (Write address 128 value 0xFF)")
     await port.transceiver.access_rw_seq(page_address=0x10, register_address=128, byte_count=1).set(value=Hex("FF"))
     await asyncio.sleep(1)
@@ -30,14 +29,11 @@ async def stop_auto_dp_init(port: ports.GenericL23Port, logger: logging.Logger):
 # func: apply_dp_init
 # description: Apply Data Path Init (Write address 143 value 0xFF)
 # *************************************************************************************
-async def apply_dp_init(port: ports.GenericL23Port, logger: logging.Logger):
+async def apply_dp_init(port: ports.Z800FreyaPort, logger_name: str):
     """Apply Data Path Init (Write address 143 value 0xFF)
-
-    :param port: port object
-    :type port: ports.GenericL23Port
-    :param logger: logger object
-    :type logger: logging.Logger
     """
+    # Get logger
+    logger = logging.getLogger(logger_name)
     logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Apply Data Path Init (Write address 143 value 0xFF)")
     await port.transceiver.access_rw_seq(page_address=0x10, register_address=143, byte_count=1).set(value=Hex("FF"))
     await asyncio.sleep(1)
@@ -46,14 +42,11 @@ async def apply_dp_init(port: ports.GenericL23Port, logger: logging.Logger):
 # func: activate_dp
 # description: Activate Data Path (Write address 128 with value 0x00)
 # *************************************************************************************
-async def activate_dp(port: ports.GenericL23Port, logger: logging.Logger):
+async def activate_dp(port: ports.Z800FreyaPort, logger_name: str):
     """Activate Data Path (Write address 128 with value 0x00)
-
-    :param port: port object
-    :type port: ports.GenericL23Port
-    :param logger: logger object
-    :type logger: logging.Logger
     """
+    # Get logger
+    logger = logging.getLogger(logger_name)
     logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Activate Data Path (Write address 128 with value 0x00)")
     await port.transceiver.access_rw_seq(page_address=0x10, register_address=128, byte_count=1).set(value=Hex("00"))
     await asyncio.sleep(1)
@@ -62,20 +55,11 @@ async def activate_dp(port: ports.GenericL23Port, logger: logging.Logger):
 # func: output_eq_write
 # description: Write input dB value to a specified cursor on a specified lane
 # *************************************************************************************
-async def output_eq_write(port: ports.GenericL23Port, lane: int, db: int, cursor: Cursor, logger: logging.Logger):
+async def output_eq_write(port: ports.Z800FreyaPort, lane: int, db: int, cursor: Cursor, logger_name: str):
     """Write input dB value to a specified cursor on a specified lane
-
-    :param port: port object
-    :type port: ports.GenericL23Port
-    :param lane: transceiver lane, from 1-8
-    :type lane: int
-    :param db: dB value, from 0-7
-    :type db: int
-    :param cursor: cursor to adjust
-    :type cursor: Cursor
-    :param logger: logger object
-    :type logger: logging.Logger
     """
+    # Get logger
+    logger = logging.getLogger(logger_name)
     logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Write {db} dB to {cursor.name} - Lane {lane} ")
     assert 1<=lane<=8
     assert 0<=db<=7
@@ -124,18 +108,12 @@ async def output_eq_write(port: ports.GenericL23Port, lane: int, db: int, cursor
 # func: output_eq_read
 # description: Read dB value from a specified cursor on a specified lane
 # *************************************************************************************
-async def output_eq_read(port: ports.GenericL23Port, lane: int, cursor: Cursor, logger: logging.Logger):
+async def output_eq_read(port: ports.Z800FreyaPort, lane: int, cursor: Cursor, logger_name: str):
     """Read dB value from a specified cursor on a specified lane
-
-    :param port: port object
-    :type port: ports.GenericL23Port
-    :param lane: transceiver lane, from 1-8
-    :type lane: int
-    :param cursor: cursor to adjust
-    :type cursor: Cursor
-    :param logger: logger object
-    :type logger: logging.Logger
     """
+    # Get logger
+    logger = logging.getLogger(logger_name)
+
     assert 1<=lane<=8
 
     # find byte address based on lane index and Pre/Post/Amplitude
@@ -161,22 +139,11 @@ async def output_eq_read(port: ports.GenericL23Port, lane: int, cursor: Cursor, 
 # func: app_sel
 # description: Write AppSelCode, DataPathID, and ExplicitControl to a specified lane
 # *************************************************************************************
-async def app_sel(port: ports.GenericL23Port, lane: int, appsel_code: int, dp_id: int, explicit_ctrl: int, logger: logging.Logger):
+async def app_sel(port: ports.Z800FreyaPort, lane: int, appsel_code: int, dp_id: int, explicit_ctrl: int, logger_name: str):
     """Write AppSelCode, DataPathID, and ExplicitControl to a specified lane
-
-    :param port: port object
-    :type port: ports.GenericL23Port
-    :param lane: transceiver lane, from 1-8
-    :type lane: int
-    :param appsel_code: appsel code, from 0-15
-    :type appsel_code: int
-    :param dp_id: data path id, from 0-7
-    :type dp_id: int
-    :param explicit_ctrl: explicit control, 0 for false/off, 1 for true/on
-    :type explicit_ctrl: int
-    :param logger: logger object
-    :type logger: logging.Logger
     """
+    # Get logger
+    logger = logging.getLogger(logger_name)
     logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Write AppSelCode={appsel_code}, DataPathID={dp_id}, ExplicitControl={explicit_ctrl} - Lane {lane} ")
     assert 1<=lane<=8
     assert 0<=appsel_code<=15
@@ -204,19 +171,13 @@ async def app_sel(port: ports.GenericL23Port, lane: int, appsel_code: int, dp_id
 # func: read_prbs_ber
 # description: Read PRBS BER from a specified lane
 # *************************************************************************************
-async def read_prbs_ber(port: ports.GenericL23Port, lane: int, logger: logging.Logger) -> float:
+async def read_prbs_ber(port: ports.Z800FreyaPort, lane: int, logger_name: str) -> float:
     """Read PRBS BER from a specified lane. If zero errored bits, the BER is calculated as 4.6/prbs_bits for 99% confidence level.
     Read more in https://www.lightwaveonline.com/home/article/16647704/explaining-those-ber-testing-mysteries
-
-    :param port: Read PRBS BER from a specified lane
-    :type port: ports.GenericL23Port
-    :param lane: lane, from 1-8
-    :type lane: int
-    :param logger: logger object
-    :type logger: logging.Logger
-    :return: PRBS BER
-    :rtype: float
     """
+    # Get logger
+    logger = logging.getLogger(logger_name)
+
     assert 1<=lane<=8
     # read starting PRBS BER
     _prbs_ber = 0.0
@@ -243,26 +204,11 @@ def less_equal(current: float, target:float) -> bool:
 # func: test_done
 # description: Show test result and stop PRBS
 # *************************************************************************************
-async def test_done(port: ports.GenericL23Port, lane: int, current_ber: float, target_ber: float, amp_db: int, pre_db: int, post_db: int, is_successful: bool, logger: logging.Logger):
+async def test_done(port: ports.Z800FreyaPort, lane: int, current_ber: float, target_ber: float, amp_db: int, pre_db: int, post_db: int, is_successful: bool, logger_name: str):
     """Show test result and stop PRBS
-
-    :param port: port object
-    :type port: ports.GenericL23Port
-    :param lane: lane index, 1-8
-    :type lane: int
-    :param current_ber: current BER
-    :type current_ber: float
-    :param target_ber: target BER
-    :type target_ber: float
-    :param amp_db: final amplitude dB
-    :type amp_db: int
-    :param pre_db: final pre-cursor dB
-    :type pre_db: int
-    :param post_db: final post-cursor dB
-    :type post_db: int
-    :param is_successful: flag
-    :type is_successful: bool
     """
+    # Get logger
+    logger = logging.getLogger(logger_name)
     logger.info(f"#####################################################################")
     logger.info(f"Lane: {lane}")
     logger.info(f"Current PRBS BER: {'{0:.3e}'.format(current_ber)}, Target PRBS BER: {target_ber}")
@@ -271,4 +217,41 @@ async def test_done(port: ports.GenericL23Port, lane: int, current_ber: float, t
 
     # stop PRBS on port
     _serdes = lane - 1
-    await port.serdes[_serdes].prbs.tx_config.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
+    await port.serdes[_serdes].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
+
+
+
+def get_port_list(tester_obj: testers.L23Tester, port_pair_list: List[dict], key_str: str) -> List[Any]:
+    _port_obj_list = []
+    for port_pair in port_pair_list:
+        _port_str = port_pair[key_str]
+
+        # Access module on the tester
+        _mid = int(_port_str.split("/")[0])
+        _pid = int(_port_str.split("/")[1])
+        module_obj = tester_obj.modules.obtain(_mid)
+
+        if not isinstance(module_obj, modules.Z800FreyaModule):
+            logging.info(f"This script is only for Freya module")
+            return []
+
+        # Get the port on module as TX port
+        port_obj = module_obj.ports.obtain(_pid)
+
+        # Inset the port object to the list
+        _port_obj_list.append(port_obj)
+    return _port_obj_list
+
+async def reserve_reset_ports_in_list(tester_obj: testers.L23Tester, port_obj_list: List[ports.Z800FreyaPort]) -> None:
+    for _port in port_obj_list:
+        _module_id = _port.kind.module_id
+        _module = tester_obj.modules.obtain(_module_id)
+        await mgmt.free_module(module=_module, should_free_ports=False)
+        await mgmt.reserve_port(_port)
+        await mgmt.reset_port(_port)
+    await asyncio.sleep(1.0)
+
+async def release_ports_in_list(port_obj_list: List[ports.Z800FreyaPort]) -> None:
+    for _port in port_obj_list:
+        await mgmt.free_port(_port)
+    await asyncio.sleep(1.0)

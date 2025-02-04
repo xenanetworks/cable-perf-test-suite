@@ -10,7 +10,7 @@ import asyncio
 
 from xoa_driver import testers, modules, ports, enums
 from xoa_driver.hlfuncs import mgmt
-from func_lib import *
+from libs import *
 import logging
 
 #---------------------------

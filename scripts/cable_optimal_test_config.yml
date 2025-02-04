@@ -1,0 +1,23 @@
+cable_optimal_test_config:
+  chassis_ip: "10.10.10.10"
+  username: "CablePerfOptimalTest"
+  password: "xena"
+  tcp_port: 22606
+  port_pair_list:
+    - tx: "3/0"
+      rx: "6/0"
+  module_media: "QSFPDD800"
+  port_speed: "1x800G"
+  lane: 1
+  delay_after_reset: 2
+  prbs_test_config:
+    polynomial: "PRBS31"
+    duration: 10
+  transceiver_eq_config:
+    amp_min: 0
+    amp_max: 7
+    pre_min: 0
+    pre_max: 7
+    post_min: 0
+    post_max: 7
+    delay_after_eq_write: 2
