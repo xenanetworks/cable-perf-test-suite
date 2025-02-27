@@ -64,8 +64,9 @@ async def output_eq_write(port: ports.Z800FreyaPort, lane: int, db: int, cursor:
     assert 1<=lane<=8
     assert 0<=db<=7
 
+    _start_addr = 161
     # find byte address based on lane index and Pre/Post/Amplitude
-    _reg_addr = math.ceil(lane/2) + 161 + int(cursor.value*4)
+    _reg_addr = _start_addr + int(cursor.value*4) + math.ceil(lane/2)
     
     _is_upper_lane = False
     if lane % 2 == 0: # upper lane, value should update bit 7-4
@@ -116,8 +117,9 @@ async def output_eq_read(port: ports.Z800FreyaPort, lane: int, cursor: Cursor, l
 
     assert 1<=lane<=8
 
+    _start_addr = 161
     # find byte address based on lane index and Pre/Post/Amplitude
-    _reg_addr = math.ceil(lane/2) + 161 + int(cursor.value*4)
+    _reg_addr = _start_addr + int(cursor.value*4) + math.ceil(lane/2)
     
     _is_upper_lane = False
     if lane % 2 == 0: # upper lane, value should update bit 7-4
