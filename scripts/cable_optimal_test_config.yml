@@ -3,6 +3,7 @@ cable_optimal_test_config:
   username: "CablePerfOptimalTest"
   password: "xena"
   tcp_port: 22606
+  log_filename: "cable_optimal_test.log"
   port_pair_list:
     - tx: "3/0"
       rx: "6/0"
