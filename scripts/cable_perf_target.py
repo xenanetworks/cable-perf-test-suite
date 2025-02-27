@@ -8,224 +8,307 @@
 #
 ################################################################
 
+
 import asyncio
-import sys
 
 from xoa_driver import testers, modules, ports, enums
 from xoa_driver.hlfuncs import mgmt
-from func_lib import *
+from libs import *
+from models import *
+import yaml, json
+from pathlib import Path
 import logging
 
-#---------------------------
-# Global parameters
-#---------------------------
-CHASSIS_IP = "10.165.136.60"
-P0 = "3/0"
-P1 = "6/0"
-LANE = 1 # which lane to test, from 1 to 8
-USERNAME = "xoa"
-AMP_INIT = 0 # min = 0 dB, max = 7 dB
-PRE_INIT = 0 # min = 0 dB, max = 7 dB
-POST_INIT = 0 # min = 0 dB, max = 7 dB
-TARGET_BER = 1.2e-9 # The target PRBS BER
-DELAY_AFTER_RESET = 2 # seconds
-DELAY_AFTER_EQ_WRITE = 2 # seconds
 
-#---------------------------
-# cable_perf_target
-#---------------------------
-async def cable_perf_target(chassis_ip: str, p0: str, p1: str, lane: int, username: str, amp_init: int, pre_init: int, post_init: int, target_ber: float, delay_after_reset: int, delay_after_eq_write: int):
+#-----------------------------
+# class CablePerfTargetTest
+#-----------------------------
+
+class CablePerfTargetTest:
+    def __init__(self, test_config_file: str, enable_comm_trace: bool = False):
+        self.enable_comm_trace = enable_comm_trace
+        self.test_config_file = test_config_file
+        self.test_config: CablePerfTargetTestConfig
+        self.tester_obj: testers.L23Tester
+
+        script_dir = Path(__file__).resolve().parent
+        file_path = script_dir / test_config_file
+        self.load_test_config(str(file_path))
+
+    @property
+    def chassis_ip(self):
+        return self.test_config.chassis_ip
     
-    # configure basic logger
-    logger = logging.getLogger("cable_perf_target")
-    logging.basicConfig(
-        format="%(asctime)s  %(message)s",
-        level=logging.DEBUG,
-        handlers=[
-            logging.FileHandler(filename="cable_perf_target.log", mode="a"),
-            logging.StreamHandler()]
-        )
+    @property
+    def username(self):
+        return self.test_config.username
     
-    # get module indices and port indices
-    _mid_0 = int(p0.split("/")[0])
-    _pid_0 = int(p0.split("/")[1])
-    _mid_1 = int(p1.split("/")[0])
-    _pid_1 = int(p1.split("/")[1])
+    @property
+    def password(self):
+        return self.test_config.password
+    
+    @property
+    def tcp_port(self):
+        return self.test_config.tcp_port
+    
+    @property
+    def log_filename(self):
+        return self.test_config.log_filename
 
-    if not 1<=lane<=8:
-        logger.warning(f"Lane must in range[1,8]")
-        return
+    @property
+    def logger_name(self):
+        return self.log_filename.replace(".log", "")
+    
+    @property
+    def prbs_test_config(self):
+        return self.test_config.prbs_test_config.model_dump()
+    
+    @property
+    def prbs_polynomial(self) -> enums.PRBSPolynomial:
+        return enums.PRBSPolynomial[self.test_config.prbs_test_config.polynomial]
+    
+    @property
+    def amp_init(self):
+        return self.test_config.transceiver_init_config.amp_init
+    
+    @property
+    def pre_init(self):
+        return self.test_config.transceiver_init_config.pre_init
+    
+    @property
+    def post_init(self):
+        return self.test_config.transceiver_init_config.post_init
+    
+    @property
+    def target_prbs_ber(self):
+        return self.test_config.transceiver_init_config.target_prbs_ber
+    
+    @property
+    def delay_after_reset(self):
+        return self.test_config.delay_after_reset
+    
+    @property
+    def lane(self):
+        return self.test_config.lane
+    
+    @property
+    def delay_after_eq_write(self):
+        return self.test_config.transceiver_init_config.delay_after_eq_write
+    
+    @property
+    def prbs_duration(self):
+        return self.test_config.prbs_test_config.duration
+    
+    @property
+    def port_pair_list(self):
+        __list = []
+        for port_pair in self.test_config.port_pair_list:
+            __list.append(port_pair.model_dump())
+        return __list
+    
+    def load_test_config(self, test_config_file: str):
+        with open(test_config_file, "r") as f:
+            test_config_dict = yaml.safe_load(f)
+            test_config_value = json.dumps(test_config_dict["cable_target_test_config"])
+            self.test_config = CablePerfTargetTestConfig.model_validate_json(test_config_value)
 
-    logger.info(f"#####################################################################")
-    logger.info(f"Chassis:            {chassis_ip}")
-    logger.info(f"Username:           {username}")
-    logger.info(f"PRBS TX Port:       {p0}")
-    logger.info(f"PRBS RX Port:       {p1}")
-    logger.info(f"Lane:               {lane}")
-    logger.info(f"Initial Amplitude:   {amp_init} dB")
-    logger.info(f"Initial PreCursor:   {pre_init} dB")
-    logger.info(f"Initial PostCursor:  {post_init} dB")
-    logger.info(f"Target PRBS BER:     {target_ber}")
-    logger.info(f"#####################################################################")
+            # configure basic logger
+            logging.basicConfig(
+                format="%(asctime)s  %(message)s",
+                level=logging.DEBUG,
+                handlers=[
+                    logging.FileHandler(filename=self.log_filename, mode="a"),
+                    logging.StreamHandler()]
+                )
+            
+    def validate_lane(self) -> bool:
+        if not 1<=self.lane<=8:
+            logging.warning(f"Lane must in range[1,8]")
+            return False
+        return True
 
-    # connect to the tester and automatically disconnect when ended
-    async with testers.L23Tester(host=chassis_ip, username=username, password="xena", port=22606, enable_logging=False) as tester_obj:
+    def validate_transceiver_eq_config(self, transceiver_init_config: TransceiverInitConfig) -> bool:
+        if transceiver_init_config.amp_init < 0 or transceiver_init_config.pre_init < 0 or transceiver_init_config.post_init < 0:
+            logging.warning(f"Min < 0 error! amp_init: {transceiver_init_config.amp_init}, pre_init: {transceiver_init_config.pre_init}, post_init: {transceiver_init_config.post_init}")
+            return False
+        return True
+    
+    async def connect(self):
+        self.tester_obj = await testers.L23Tester(host=self.chassis_ip, username=self.username, password=self.password, port=self.tcp_port, enable_logging=self.enable_comm_trace)
 
-        # access module on the tester
-        module_0 = tester_obj.modules.obtain(_mid_0)
-        module_1 = tester_obj.modules.obtain(_mid_1)
+        # Get logger
+        logger = logging.getLogger(self.logger_name)
+        logger.info(f"#####################################################################")
+        logger.info(f"Chassis:              {self.chassis_ip}")
+        logger.info(f"Username:             {self.username}")
+        logger.info(f"Port Pair:           {self.port_pair_list}")
+        logger.info(f"Lane:                 {self.lane}")
+        logger.info(f"Amplitude Init:      {self.amp_init} dB")
+        logger.info(f"PreCursor Init:      {self.pre_init} dB")
+        logger.info(f"PostCursor Init:     {self.post_init} dB")
+        logger.info(f"Target PRBS BER:     {self.target_prbs_ber}")
+        logger.info(f"Delay After Reset:    {self.delay_after_reset} seconds")
+        logger.info(f"Delay After EQ Write: {self.delay_after_eq_write} seconds")
+        logger.info(f"PRBS Duration:        {self.prbs_duration} seconds")
+        logger.info(f"#####################################################################")
 
-        # the module must be a freya module
-        if not isinstance(module_0, modules.Z800FreyaModule):
-            logger.warning(f"Port {p0} is not a Freya port. Abort")
-            return None
-        if not isinstance(module_1, modules.Z800FreyaModule):
-            logger.warning(f"Port {p1} is not a Freya port. Abort")
-            return None
-        
-        # get the port object
-        port_0 = module_0.ports.obtain(_pid_0)
-        port_1 = module_1.ports.obtain(_pid_1)
+    async def disconnect(self):
+        await self.tester_obj.session.logoff()
 
-        # reserve the port and reset the port
-        await mgmt.free_module(module_0, should_free_ports=True)
-        await mgmt.reserve_port(port_0)
-        await mgmt.reset_port(port_0)
-        await mgmt.free_module(module_1, should_free_ports=True)
-        await mgmt.reserve_port(port_1)
-        await mgmt.reset_port(port_1)
-        await asyncio.sleep(delay_after_reset)
+    async def target_search(self, port_pair_list: List[dict]):
+        # Get logger
+        logger = logging.getLogger(self.logger_name)
 
-        # configure PRBS on port 0 and port 1
-        await port_0.pcs_pma.prbs_config.type.set(prbs_inserted_type=enums.PRBSInsertedType.PHY_LINE, polynomial=enums.PRBSPolynomial.PRBS31, invert=enums.PRBSInvertState.NON_INVERTED, statistics_mode=enums.PRBSStatisticsMode.PERSECOND)
-        await port_1.pcs_pma.prbs_config.type.set(prbs_inserted_type=enums.PRBSInsertedType.PHY_LINE, polynomial=enums.PRBSPolynomial.PRBS31, invert=enums.PRBSInvertState.NON_INVERTED, statistics_mode=enums.PRBSStatisticsMode.PERSECOND)
+        # Reserve and reset ports
+        logger.info(f"Reserve and reset ports")
+        tx_port_list: List[ports.Z800FreyaPort] = get_port_list(self.tester_obj, port_pair_list, "tx")
+        rx_port_list: List[ports.Z800FreyaPort] = get_port_list(self.tester_obj, port_pair_list, "rx")
+        await reserve_reset_ports_in_list(self.tester_obj, tx_port_list)
+        await reserve_reset_ports_in_list(self.tester_obj, rx_port_list)
 
-        # start PRBS on port 0
-        _serdes = lane - 1
-        await port_0.l1.serdes[_serdes].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
+        logger.info(f"Delay after reset: {self.delay_after_reset}s")
+        await asyncio.sleep(self.delay_after_reset)
 
-        # write amp/pre/post to initial dB as a starting point
-        _amp_db = amp_init
-        _pre_db = pre_init
-        _post_db = post_init
-        logger.info(f"|----------------------|")
-        logger.info(f"|  Initial dB Values   |")
-        logger.info(f"|----------------------|")
-        await output_eq_write(port=port_1, lane=lane, db=_amp_db, cursor=Cursor.AMPLITUDE, logger=logger)
-        await output_eq_write(port=port_1, lane=lane, db=_pre_db, cursor=Cursor.PRECURSOR, logger=logger)
-        await output_eq_write(port=port_1, lane=lane, db=_post_db, cursor=Cursor.POSTCURSOR, logger=logger)
-        await asyncio.sleep(delay_after_eq_write)
+        # exhaustive search of all cursor combinations
+        for tx_port_obj, rx_port_obj in zip(tx_port_list, rx_port_list):
+            __polynomial = self.prbs_polynomial
 
-        # check if PRBS BER is less equal to target BER
-        _current_prbs_ber = await read_prbs_ber(port=port_1, lane=lane, logger=logger)
-        if less_equal(_current_prbs_ber, target_ber):
-            await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True, logger=logger)
-            return
-        else:
-            _prev_prbs_ber = _current_prbs_ber
+            # configure prbs
+            await tx_port_obj.pcs_pma.prbs_config.type.set(prbs_inserted_type=enums.PRBSInsertedType.PHY_LINE, polynomial=__polynomial, invert=enums.PRBSInvertState.NON_INVERTED, statistics_mode=enums.PRBSStatisticsMode.ACCUMULATIVE)
+            await rx_port_obj.pcs_pma.prbs_config.type.set(prbs_inserted_type=enums.PRBSInsertedType.PHY_LINE, polynomial=__polynomial, invert=enums.PRBSInvertState.NON_INVERTED, statistics_mode=enums.PRBSStatisticsMode.ACCUMULATIVE)
 
-            # algorithm - adjust amplitude and check PRBS stats on port 1
+            # start prbs
+            _serdes = self.lane - 1
+            await tx_port_obj.l1.serdes[_serdes].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
+
+            logger.info(f"-- Port Pair: {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} -> {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id} --")
+            
+            # write amp/pre/post to initial dB as a starting point
+            _amp_db = self.amp_init
+            _pre_db = self.pre_init
+            _post_db = self.post_init
             logger.info(f"|----------------------|")
-            logger.info(f"|   Adjust AMPLITUDE   |")
+            logger.info(f"|  Initial dB Values   |")
             logger.info(f"|----------------------|")
-            while _amp_db<7:
-                _amp_db += 1
-                await output_eq_write(port=port_1, lane=lane, db=_amp_db, cursor=Cursor.AMPLITUDE, logger=logger)
-                await asyncio.sleep(delay_after_eq_write)
+            await output_eq_write(port=rx_port_obj, lane=self.lane, db=_amp_db, cursor=Cursor.AMPLITUDE, logger_name=self.logger_name)
+            await output_eq_write(port=rx_port_obj, lane=self.lane, db=_pre_db, cursor=Cursor.PRECURSOR, logger_name=self.logger_name)
+            await output_eq_write(port=rx_port_obj, lane=self.lane, db=_post_db, cursor=Cursor.POSTCURSOR, logger_name=self.logger_name)
+            await asyncio.sleep(self.delay_after_eq_write)
 
+            # check if PRBS BER is less equal to target BER
+            _current_prbs_ber = await read_prbs_ber(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
+            if less_equal(_current_prbs_ber, self.target_prbs_ber):
+                await test_done(tx_port_obj, self.lane, _current_prbs_ber, self.target_prbs_ber, _amp_db, _pre_db, _post_db, is_successful=True, logger_name=self.logger_name)
+                return
+            else:
+                _prev_prbs_ber = _current_prbs_ber
+
+                # algorithm - adjust amplitude and check PRBS stats on port 1
+                logger.info(f"|----------------------|")
+                logger.info(f"|   Adjust AMPLITUDE   |")
+                logger.info(f"|----------------------|")
+                while _amp_db<7:
+                    _amp_db += 1
+                    await output_eq_write(port=rx_port_obj, lane=self.lane, db=_amp_db, cursor=Cursor.AMPLITUDE, logger_name=self.logger_name)
+                    await asyncio.sleep(self.delay_after_eq_write)
+
+                    # read the current BER
+                    _current_prbs_ber = await read_prbs_ber(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
+                    
+                    # if current BER <= target BER, mark done and finish
+                    if less_equal(_current_prbs_ber, self.target_prbs_ber):
+                        await test_done(tx_port_obj, self.lane, _current_prbs_ber, self.target_prbs_ber, _amp_db, _pre_db, _post_db, is_successful=True, logger_name=self.logger_name)
+                        return
+                    # if target BER < current BER <= prev BER, continue the searching
+                    elif less_equal(_current_prbs_ber, _prev_prbs_ber):
+                        _prev_prbs_ber = _current_prbs_ber
+                        continue
+                    # if current BER > prev BER, roll back and move on to pre-cursor
+                    else:
+                        _amp_db -= 1
+                        await output_eq_write(port=rx_port_obj, lane=self.lane, db=_amp_db, cursor=Cursor.AMPLITUDE, logger_name=self.logger_name)
+                        break
+                await asyncio.sleep(self.delay_after_eq_write)
+
+                # algorithm - adjust pre-cursor and check PRBS stats on port 1
+                logger.info(f"|----------------------|")
+                logger.info(f"|   Adjust PRE-CURSOR  |")
+                logger.info(f"|----------------------|")
+                while _pre_db<7:
+                    _pre_db += 1
+                    await output_eq_write(port=rx_port_obj, lane=self.lane, db=_pre_db, cursor=Cursor.PRECURSOR, logger_name=self.logger_name)
+                    await asyncio.sleep(self.delay_after_eq_write)
+
+                    # read the current BER
+                    _current_prbs_ber = await read_prbs_ber(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
+                    
+                    # if current BER <= target BER, mark done and finish
+                    if less_equal(_current_prbs_ber, self.target_prbs_ber):
+                        await test_done(tx_port_obj, self.lane, _current_prbs_ber, self.target_prbs_ber, _amp_db, _pre_db, _post_db, is_successful=True, logger_name=self.logger_name)
+                        return
+                    # if target BER < current BER <= prev BER, continue the searching
+                    elif less_equal(_current_prbs_ber, _prev_prbs_ber):
+                        _prev_prbs_ber = _current_prbs_ber
+                        continue
+                    # if current BER > prev BER, roll back and move on to pre-cursor
+                    else:
+                        _pre_db -= 1
+                        await output_eq_write(port=rx_port_obj, lane=self.lane, db=_pre_db, cursor=Cursor.PRECURSOR, logger_name=self.logger_name)
+                        break
+                await asyncio.sleep(self.delay_after_eq_write)
+
+                # algorithm - adjust post-cursor and check PRBS stats on port 1
+                logger.info(f"|----------------------|")
+                logger.info(f"|  Adjust POST-CURSOR  |")
+                logger.info(f"|----------------------|")
+                while _post_db<7:
+                    _post_db += 1
+                    await output_eq_write(port=rx_port_obj, lane=self.lane, db=_post_db, cursor=Cursor.POSTCURSOR, logger_name=self.logger_name)
+                    await asyncio.sleep(self.delay_after_eq_write)
+
+                    # read the current BER
+                    _current_prbs_ber = await read_prbs_ber(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
+                    
+                    # if current BER <= target BER, mark done and finish
+                    if less_equal(_current_prbs_ber, self.target_prbs_ber):
+                        await test_done(tx_port_obj, self.lane, _current_prbs_ber, self.target_prbs_ber, _amp_db, _pre_db, _post_db, is_successful=True, logger_name=self.logger_name)
+                        return
+                    # if target BER < current BER <= prev BER, continue the searching
+                    elif less_equal(_current_prbs_ber, _prev_prbs_ber):
+                        _prev_prbs_ber = _current_prbs_ber
+                        continue
+                    # if current BER > prev BER, roll back and move on to pre-cursor
+                    else:
+                        _post_db -= 1
+                        await output_eq_write(port=rx_port_obj, lane=self.lane, db=_post_db, cursor=Cursor.POSTCURSOR, logger_name=self.logger_name)
+                        break
+                await asyncio.sleep(self.delay_after_eq_write)
+
+                # searching failed
                 # read the current BER
-                _current_prbs_ber = await read_prbs_ber(port=port_1, lane=lane, logger=logger)
-                
-                # if current BER <= target BER, mark done and finish
-                if less_equal(_current_prbs_ber, target_ber):
-                    await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True, logger=logger)
-                    return
-                # if target BER < current BER <= prev BER, continue the searching
-                elif less_equal(_current_prbs_ber, _prev_prbs_ber):
-                    _prev_prbs_ber = _current_prbs_ber
-                    continue
-                # if current BER > prev BER, roll back and move on to pre-cursor
-                else:
-                    _amp_db -= 1
-                    await output_eq_write(port=port_1, lane=lane, db=_amp_db, cursor=Cursor.AMPLITUDE, logger=logger)
-                    break
-            await asyncio.sleep(delay_after_eq_write)
+                _current_prbs_ber = await read_prbs_ber(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
+                await test_done(tx_port_obj, self.lane, _current_prbs_ber, self.target_prbs_ber, _amp_db, _pre_db, _post_db, is_successful=False, logger_name=self.logger_name)
+            
+    
+    async def run(self):
+        self.validate_lane()
+        self.validate_transceiver_eq_config(self.test_config.transceiver_init_config)
+        await self.connect()
+        await self.target_search(self.port_pair_list)        
+        await self.disconnect()
+    
 
-            # algorithm - adjust pre-cursor and check PRBS stats on port 1
-            logger.info(f"|----------------------|")
-            logger.info(f"|   Adjust PRE-CURSOR  |")
-            logger.info(f"|----------------------|")
-            while _pre_db<7:
-                _pre_db += 1
-                await output_eq_write(port=port_1, lane=lane, db=_pre_db, cursor=Cursor.PRECURSOR, logger=logger)
-                await asyncio.sleep(delay_after_eq_write)
 
-                # read the current BER
-                _current_prbs_ber = await read_prbs_ber(port=port_1, lane=lane, logger=logger)
-                
-                # if current BER <= target BER, mark done and finish
-                if less_equal(_current_prbs_ber, target_ber):
-                    await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True, logger=logger)
-                    return
-                # if target BER < current BER <= prev BER, continue the searching
-                elif less_equal(_current_prbs_ber, _prev_prbs_ber):
-                    _prev_prbs_ber = _current_prbs_ber
-                    continue
-                # if current BER > prev BER, roll back and move on to pre-cursor
-                else:
-                    _pre_db -= 1
-                    await output_eq_write(port=port_1, lane=lane, db=_pre_db, cursor=Cursor.PRECURSOR, logger=logger)
-                    break
-            await asyncio.sleep(delay_after_eq_write)
-
-            # algorithm - adjust post-cursor and check PRBS stats on port 1
-            logger.info(f"|----------------------|")
-            logger.info(f"|  Adjust POST-CURSOR  |")
-            logger.info(f"|----------------------|")
-            while _post_db<7:
-                _post_db += 1
-                await output_eq_write(port=port_1, lane=lane, db=_post_db, cursor=Cursor.POSTCURSOR, logger=logger)
-                await asyncio.sleep(delay_after_eq_write)
-
-                # read the current BER
-                _current_prbs_ber = await read_prbs_ber(port=port_1, lane=lane, logger=logger)
-                
-                # if current BER <= target BER, mark done and finish
-                if less_equal(_current_prbs_ber, target_ber):
-                    await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=True, logger=logger)
-                    return
-                # if target BER < current BER <= prev BER, continue the searching
-                elif less_equal(_current_prbs_ber, _prev_prbs_ber):
-                    _prev_prbs_ber = _current_prbs_ber
-                    continue
-                # if current BER > prev BER, roll back and move on to pre-cursor
-                else:
-                    _post_db -= 1
-                    await output_eq_write(port=port_1, lane=lane, db=_post_db, cursor=Cursor.POSTCURSOR, logger=logger)
-                    break
-            await asyncio.sleep(delay_after_eq_write)
-
-            # searching failed
-            # read the current BER
-            _current_prbs_ber = await read_prbs_ber(port=port_1, lane=lane, logger=logger)
-            await test_done(port_0, lane, _current_prbs_ber, target_ber, _amp_db, _pre_db, _post_db, is_successful=False, logger=logger)
-
+#---------------------------
+# main()
+#---------------------------
+async def main():
+    stop_event = asyncio.Event()
+    try:
+        test = CablePerfTargetTest("cable_target_test_config.yml")
+        await test.run()
+    except KeyboardInterrupt:
+        stop_event.set()
 
 if __name__ == "__main__":
-    if len(sys.argv) == 10:
-        chassis_ip = sys.argv[1]
-        p0 = sys.argv[2]
-        p1 = sys.argv[3]
-        lane = int(sys.argv[4])
-        username = sys.argv[5]
-        amp_init = int(sys.argv[6])
-        pre_init = int(sys.argv[7])
-        post_init = int(sys.argv[8])
-        target_ber = float(sys.argv[9])
-        delay_after_reset = int(sys.argv[10])
-        delay_after_eq_write = int(sys.argv[11])
-        asyncio.run(cable_perf_target(chassis_ip, p0, p1, lane, username, amp_init, pre_init, post_init, target_ber, delay_after_reset, delay_after_eq_write))
-    elif len(sys.argv) == 1:
-        asyncio.run(cable_perf_target(CHASSIS_IP, P0, P1, LANE, USERNAME, AMP_INIT, PRE_INIT, POST_INIT, TARGET_BER, DELAY_AFTER_RESET,DELAY_AFTER_EQ_WRITE))
-    else:
-        print(f"Not enough parameters")
+    asyncio.run(main())

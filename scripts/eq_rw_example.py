@@ -10,7 +10,7 @@ import asyncio
 
 from xoa_driver import testers, modules, ports, enums
 from xoa_driver.hlfuncs import mgmt
-from func_lib import *
+from libs import *
 import logging
 
 #---------------------------
@@ -33,8 +33,9 @@ async def eq_rw_example(chassis_ip: str, p0: str, p1: str, lane: int, username: 
     _mid_1 = int(p1.split("/")[0])
     _pid_1 = int(p1.split("/")[1])
 
+    logger_name = "rw_func"
     # configure basic logger
-    logger = logging.getLogger("rw_func")
+    logger = logging.getLogger(logger_name)
     logging.basicConfig(
         format="%(asctime)s  %(message)s",
         level=logging.DEBUG,
@@ -82,21 +83,21 @@ async def eq_rw_example(chassis_ip: str, p0: str, p1: str, lane: int, username: 
         await asyncio.sleep(WAIT_TIME)
 
         # read port 0 & 1
-        await output_eq_read(port=port_0, lane=lane, cursor=Cursor.AMPLITUDE, logger=logger)
-        await output_eq_read(port=port_0, lane=lane, cursor=Cursor.PRECURSOR, logger=logger)
-        await output_eq_read(port=port_0, lane=lane, cursor=Cursor.POSTCURSOR, logger=logger)
-        await output_eq_read(port=port_1, lane=lane, cursor=Cursor.AMPLITUDE, logger=logger)
-        await output_eq_read(port=port_1, lane=lane, cursor=Cursor.PRECURSOR, logger=logger)
-        await output_eq_read(port=port_1, lane=lane, cursor=Cursor.POSTCURSOR, logger=logger)
+        await output_eq_read(port=port_0, lane=lane, cursor=Cursor.AMPLITUDE, logger_name=logger_name)
+        await output_eq_read(port=port_0, lane=lane, cursor=Cursor.PRECURSOR, logger_name=logger_name)
+        await output_eq_read(port=port_0, lane=lane, cursor=Cursor.POSTCURSOR, logger_name=logger_name)
+        await output_eq_read(port=port_1, lane=lane, cursor=Cursor.AMPLITUDE, logger_name=logger_name)
+        await output_eq_read(port=port_1, lane=lane, cursor=Cursor.PRECURSOR, logger_name=logger_name)
+        await output_eq_read(port=port_1, lane=lane, cursor=Cursor.POSTCURSOR, logger_name=logger_name)
         await asyncio.sleep(WAIT_TIME)
 
         # write port 0 & 1
-        await output_eq_write(port=port_0, lane=lane, db=1, cursor=Cursor.AMPLITUDE, logger=logger)
-        await output_eq_write(port=port_0, lane=lane, db=2, cursor=Cursor.PRECURSOR, logger=logger)
-        await output_eq_write(port=port_0, lane=lane, db=3, cursor=Cursor.POSTCURSOR, logger=logger)
-        await output_eq_write(port=port_1, lane=lane, db=1, cursor=Cursor.AMPLITUDE, logger=logger)
-        await output_eq_write(port=port_1, lane=lane, db=2, cursor=Cursor.PRECURSOR, logger=logger)
-        await output_eq_write(port=port_1, lane=lane, db=3, cursor=Cursor.POSTCURSOR, logger=logger)
+        await output_eq_write(port=port_0, lane=lane, db=1, cursor=Cursor.AMPLITUDE, logger_name=logger_name)
+        await output_eq_write(port=port_0, lane=lane, db=2, cursor=Cursor.PRECURSOR, logger_name=logger_name)
+        await output_eq_write(port=port_0, lane=lane, db=3, cursor=Cursor.POSTCURSOR, logger_name=logger_name)
+        await output_eq_write(port=port_1, lane=lane, db=1, cursor=Cursor.AMPLITUDE, logger_name=logger_name)
+        await output_eq_write(port=port_1, lane=lane, db=2, cursor=Cursor.PRECURSOR, logger_name=logger_name)
+        await output_eq_write(port=port_1, lane=lane, db=3, cursor=Cursor.POSTCURSOR, logger_name=logger_name)
         await asyncio.sleep(WAIT_TIME)
 
 if __name__ == "__main__":
