@@ -13,6 +13,7 @@ This documentation specifies Cable Performance Test Methodology.
     :caption: Table of Content
 
     step_by_step
-    signal_with_tap_adjust/index
+    introduction
+    cable_perf_tests/index
 
 

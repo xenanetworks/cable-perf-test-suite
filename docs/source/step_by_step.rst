@@ -14,8 +14,8 @@ Run Test
 
 Test scripts can be found in /scripts/ directory:
 
-* ``prbs_perf_optimal.py``, see :doc:`signal_with_tap_adjust/prbs_perf_optimal`
-* ``prbs_perf_target.py``, see :doc:`signal_with_tap_adjust/prbs_perf_target`
+* ``prbs_perf_optimal.py``, see :doc:`cable_perf_tests/rx_output_eq_tests/rx_output_eq_optimal`
+* ``prbs_perf_target.py``, see :doc:`cable_perf_tests/rx_output_eq_tests/rx_output_eq_target`
 
 In each script, you should set he parameters to match your test.
 

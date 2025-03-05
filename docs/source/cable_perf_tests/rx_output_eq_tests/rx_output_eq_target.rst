@@ -1,4 +1,4 @@
-Target PRBS BER Performance
+RX Output EQ Target Test
 ==========================================
 
 Objective
@@ -19,7 +19,7 @@ Method
 ----------
 
 
-.. figure:: ../images/cable_test.png
+.. figure:: ../../images/cable_test.png
 
    Cable performance test illustration
 

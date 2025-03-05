@@ -1,4 +1,4 @@
-Optimal PRBS BER Performance
+RX Output EQ Optimal Test
 ===========================================
 
 Objective
@@ -18,7 +18,7 @@ Method
 ----------
 
 
-.. figure:: ../images/cable_test.png
+.. figure:: ../../images/cable_test.png
 
     Cable performance test illustration
 
