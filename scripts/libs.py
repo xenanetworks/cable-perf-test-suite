@@ -12,6 +12,22 @@ import logging
 import math
 from typing_extensions import List, Any
 
+
+async def rx_output_eq_control_supported(port: ports.Z800FreyaPort, logger_name: str) -> bool:
+    """Check if the transceiver supports RX output eq control
+    """
+    # Get logger
+    logger = logging.getLogger(logger_name)
+    logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Check if supports RX output eq contorl")
+    resp = await port.transceiver.access_rw_sqe(page_address=0x01, register_address=162, byte_count=1).get()
+    int_value = int(resp.value, 16)
+    support_flags = (int_value >> 2) & 0x07
+    if support_flags != 0x07:
+        return False
+    else:
+        return True
+
+
 # *************************************************************************************
 # func: stop_auto_dp_init
 # description: Stop Auto Data Path Init of the Module (Write address 128 value 0xFF)
