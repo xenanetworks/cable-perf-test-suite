@@ -12,7 +12,7 @@ import sys
 
 from xoa_driver import testers, modules, ports, enums
 from xoa_driver.hlfuncs import mgmt
-from scripts.libs import *
+from xoa_cpom import *
 import logging
 
 #---------------------------

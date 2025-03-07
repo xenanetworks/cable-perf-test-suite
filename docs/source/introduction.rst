@@ -1,24 +1,19 @@
 Introduction
 ============
 
-To ensure link stability, proper tuning, and optimal performance, certain high-speed QSFP_DD, OSFP, and QSFP modules need their Signal Integrity (SI) settings to align with platform media settings.
+As data center networks continue to scale, ensuring optimal signal integrity in high-speed interconnects has become a critical engineering challenge. With the increasing adoption of 100G, 400G, and 800G transceivers, precise RX Output Equalization tuning is essential for minimizing bit error rate (BER) and maintaining link stability. This is particularly crucial for transceiver vendors, who must ensure their modules perform optimally across a range of host-side TX equalization settings.
 
-Signal Integrity
-----------------
+However, manual equalization tuning is inefficient, requiring extensive trial-and-error adjustments to identify the optimal pre-cursor, main cursor, and post-cursor settings. To streamline this process, Xena Cable Performance Optimization Methodology provides an automated RX Output Equalization optimization framework, leveraging PRBS-based BER testing to systematically determine the best equalization parameters.
 
-From CMIS 5.3 specification, definition of Signal Integrity:
+This test suite is designed to:
 
-.. figure:: images/cmis_si_def.png
-    
-    CMIS SI Definition
+* Optimize RX Output Equalization settings dynamically, ensuring minimal BER and maximum signal integrity.
+* Integrate seamlessly with Xena test equipment, utilizing high-precision traffic generation and analysis tools.
+* Leverage the CMIS (Common Management Interface Specification) standard for standardized transceiver configuration and control.
+* Automate the tuning process, reducing engineering time and eliminating the inefficiencies of manual equalization adjustments.
 
-Signal Integrity (SI) settings can differ based on the combination of module and platform vendors. Modules come with default TX/RX SI settings programmed into their EEPROM by the module vendor. However, platform vendors have the capability to overwrite these settings to suit their specific platform needs. When the TX Input Adaptive EQ is disabled for all TX Data Path lanes, the host can apply new TX SI settings. RX SI settings, on the other hand, can be applied directly. It's important to ensure that these TX/RX settings are applied with the Explicit Control bit set to 1.
+By implementing an adaptive search algorithm, Xena Cable Performance Optimization Methodology systematically evaluates RX Output Equalization settings in conjunction with real-time BER feedback. The system intelligently converges on the optimal settings, ensuring transceiver modules achieve peak performance across various deployment environments.
 
-Explicit Control
-----------------
+This solution is ideal for transceiver R&D, validation engineers, and automated production testing, enabling manufacturers to confidently deliver high-performance, CMIS-compliant transceivers that operate reliably in any data center infrastructure.
 
-From CMIS 5.3 specification, definition of Explicit Control:
 
-.. figure:: images/cmis_ec_def.png
-    
-    CMIS Explicit Control
