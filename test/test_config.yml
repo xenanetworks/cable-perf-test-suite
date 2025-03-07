@@ -7,14 +7,14 @@ test_config:
   rx_output_eq_test_config:
     port_pair_list:
       - tx: "0/0"
-        rx: "0/0"
+        rx: "0/1"
     module_media: "OSFPDD800_ANLT"
-    port_speed: "1x800G"
+    port_speed: "2x400G"
     lane: 1
     delay_after_reset: 2
     prbs_test_config:
       polynomial: "PRBS31"
-      duration: 10
+      duration: 2
     transceiver_eq_config:
       amp_min: 0
       amp_max: 7
