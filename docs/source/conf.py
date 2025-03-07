@@ -45,11 +45,11 @@ def get_short_version(rel_path):
 company = f"Teledyne LeCroy Xena"
 year = datetime.datetime.today().year
 month = datetime.datetime.today().month
-project = f"Cable Performance Optimization Methodology"
+project = f"Xena Cable Performance Optimization Methodology"
 copyright = f"{year}, {company}"
 author = company
-title = f"Cable Performance Optimization Methodology"
-output_basename = f"xena_cable_perf_optimoization_suite_doc"
+title = f"Xena Cable Performance Optimization Methodology"
+output_basename = f"xoa_cpom_doc"
 
 # The full version, including alpha/beta/rc tags.
 release = get_version("../../xoa_cpom/__init__.py")
