@@ -7,7 +7,7 @@ from xoa_driver import testers, modules, ports, enums
 from xoa_driver.hlfuncs import mgmt
 from xoa_cpom.utils import *
 from xoa_cpom.cmisfuncs import *
-from models import *
+from .models import *
 import logging
 
 # *************************************************************************************

@@ -1,6 +1,12 @@
 # *************************************
 # author: leonard.yu@teledyne.com
 # *************************************
+import sys
+import os
+currentdir = os.path.dirname(os.path.abspath(__file__))
+parentdir = os.path.dirname(currentdir)
+sys.path.append(currentdir)
+sys.path.append(parentdir)
 
 import asyncio
 from xoa_cpom.cpom import XenaCablePerfOptimization

@@ -41,10 +41,7 @@ class XenaCablePerfOptimization:
         * Ensure settings comply with CMIS-defined control registers.
         
         """
-
-        script_dir = Path(__file__).resolve().parent
-        file_path = script_dir / test_config_file
-        self.load_test_config(str(file_path))
+        self.load_test_config(test_config_file)
 
     def load_test_config(self, test_config_file: str):
         with open(test_config_file, "r") as f:
