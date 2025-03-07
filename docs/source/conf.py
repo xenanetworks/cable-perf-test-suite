@@ -45,17 +45,17 @@ def get_short_version(rel_path):
 company = f"Teledyne LeCroy Xena"
 year = datetime.datetime.today().year
 month = datetime.datetime.today().month
-project = f"Cable Performance Test Methodology"
+project = f"Xena Cable Performance Optimization Methodology"
 copyright = f"{year}, {company}"
 author = company
-title = f"Cable Performance Test Methodology"
-output_basename = f"xena_cable_perf_test_suite_doc"
+title = f"Xena Cable Performance Optimization Methodology"
+output_basename = f"xoa_cpom_doc"
 
 # The full version, including alpha/beta/rc tags.
-release = get_version("../../scripts/__init__.py")
+release = get_version("../../xoa_cpom/__init__.py")
 
 # The short X.Y version.
-version = get_short_version("../../scripts/__init__.py")
+version = get_short_version("../../xoa_cpom/__init__.py")
 
 
 # -- General configuration -----------------------------------------------------
@@ -162,7 +162,7 @@ html_title = title
 # The path to the HTML logo image in the static path, or URL to the logo, or ''.
 # html_logo = './_static/xoa_logo.png'
 
-html_favicon = './_static/xoa_favicon_16.png'
+html_favicon = './_static/favicon.png'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -174,17 +174,6 @@ html_static_path = ['_static']
 
 # If true, “Created using Sphinx” is shown in the HTML footer
 # html_show_sphinx = False
-
-# html_theme_options = {
-#     "light_logo": "tlc_c1.png",
-#     "dark_logo": "tlc_c1.png",
-#     "source_repository": "https://github.com/xenanetworks/anlt-test-suite",
-#     "light_css_variables": {
-#         "color-brand-primary": "#0076c0",
-#         "color-brand-content": "#0076c0",
-#     },
-#     "navigation_with_keys": True,
-# }
 
 # If true, the index is generated twice: once as a single page with all the entries, 
 # and once as one page per starting letter. Default is False.
