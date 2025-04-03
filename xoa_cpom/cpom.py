@@ -6,10 +6,11 @@ from xoa_driver import testers, modules, ports, enums
 from xoa_driver.hlfuncs import mgmt
 from .utils import *
 from .models import *
-from .subtests import XenaRxOutputEqOptimization
+from .subtests import XenaRxOutputEqOptimization, XenaTxInputEqOptimization
 import yaml, json
 from pathlib import Path
 import logging
+from typing import Optional
 
 # *************************************************************************************
 # class: XenaCablePerfOptimization
@@ -27,7 +28,7 @@ class XenaCablePerfOptimization:
         self.test_config_file = test_config_file
         self.test_config: CablePerformanceTestConfig
         self.tester_obj: testers.L23Tester
-        self.rx_output_eq_optimization_test: XenaRxOutputEqOptimization
+        self.rx_output_eq_optimization_test: Optional[XenaRxOutputEqOptimization] = None
         """
         Optimizing RX Output Equalization
     
@@ -41,6 +42,12 @@ class XenaCablePerfOptimization:
         * Ensure settings comply with CMIS-defined control registers.
         
         """
+
+        self.tx_input_eq_optimization_test: Optional[XenaTxInputEqOptimization] = None
+        """
+        Optimizing TX Input Equalization
+        """
+
         self.load_test_config(test_config_file)
 
     def load_test_config(self, test_config_file: str):
@@ -48,15 +55,6 @@ class XenaCablePerfOptimization:
             test_config_dict = yaml.safe_load(f)
             test_config_value = json.dumps(test_config_dict["test_config"])
             self.test_config = CablePerformanceTestConfig.model_validate_json(test_config_value)
-
-            # configure basic logger
-            logging.basicConfig(
-                format="%(asctime)s  %(message)s",
-                level=logging.DEBUG,
-                handlers=[
-                    logging.FileHandler(filename=self.log_filename, mode="a"),
-                    logging.StreamHandler()]
-                )
 
     @property
     def chassis_ip(self):
@@ -68,19 +66,32 @@ class XenaCablePerfOptimization:
     
     @property
     def password(self):
-        return self.test_config.password
+        if self.test_config.password is None:
+            return "xena"
+        else:
+            return self.test_config.password
     
     @property
     def tcp_port(self):
-        return self.test_config.tcp_port
+        if self.test_config.tcp_port is None:
+            return 22606
+        else:
+            return self.test_config.tcp_port
     
     @property
     def log_filename(self):
-        return self.test_config.log_filename
+        if self.test_config.log_filename is None:
+            return "xena_cable_eq_perf_optimization.log"
+        else:
+            return self.test_config.log_filename
 
     @property
     def logger_name(self):
-        return self.log_filename.replace(".log", "")
+        if self.test_config.log_filename is None:
+            return "xena_cable_eq_perf_optimization"
+        else:
+            return self.log_filename.replace(".log", "")
+        
     
     async def connect(self):
         self.tester_obj = await testers.L23Tester(host=self.chassis_ip, username=self.username, password=self.password, port=self.tcp_port, enable_logging=self.enable_comm_trace)
@@ -92,10 +103,35 @@ class XenaCablePerfOptimization:
         logger.info(f"Username:             {self.username}")
         logger.info(f"#####################################################################")
 
-        self.rx_output_eq_optimization_test = XenaRxOutputEqOptimization(self.tester_obj, self.test_config.rx_output_eq_test_config, self.logger_name)
+        if self.test_config.rx_output_eq_test_config is not None:
+            self.rx_output_eq_optimization_test  = XenaRxOutputEqOptimization(self.tester_obj, self.test_config.rx_output_eq_test_config, self.logger_name)
+        if self.test_config.tx_input_eq_test_config is not None:
+            self.tx_input_eq_optimization_test = XenaTxInputEqOptimization(self.tester_obj, self.test_config.tx_input_eq_test_config, self.logger_name)
+
+    async def create_report_dir(self):
+        self.path = await create_report_dir(self.tester_obj)
+        
+        # configure basic logger
+        logging.basicConfig(
+            format="%(asctime)s  %(message)s",
+            level=logging.DEBUG,
+            handlers=[
+                logging.FileHandler(filename=self.log_filename, mode="a"),
+                logging.StreamHandler()]
+            )
 
     async def disconnect(self):
         await self.tester_obj.session.logoff()
+
+    async def run(self):
+        await self.connect()
+        await self.create_report_dir()
+        if self.rx_output_eq_optimization_test is not None:
+            await self.rx_output_eq_optimization_test.run()
+        if self.tx_input_eq_optimization_test is not None:
+            await self.tx_input_eq_optimization_test.run()
+        await self.disconnect()
+
 
 
 

@@ -43,10 +43,10 @@ Key Scenarios Requiring TX Input Equalizer Tuning:
 Tuning the TX input equalizer is essential in high-speed transceiver systems, especially when handling high-frequency signals, long transmission distances, or varying channel conditions. Proper tuning improves signal integrity, minimizes errors, and ensures reliable communication across different transmission environments.
 
 
-Auto-Adaptive Equalization in Transceivers
+Adaptive Equalization in Transceivers
 -------------------------------------------
 
-Auto-adaptation usually happens on the receiver side:
+Adaptation usually happens on the receiver side:
 
 * Host RX (Receiving from the module):
 

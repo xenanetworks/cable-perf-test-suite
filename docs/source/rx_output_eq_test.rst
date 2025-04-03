@@ -1,26 +1,29 @@
-RX Output Equalizatoin Test
-===========================
+RX Output EQ Optimization Test
+========================================
+
+.. figure:: images/rx_output_eq_op.png
+
+    RX Output Equalization Optimization
+
 
 Objective
 ----------
 
-Using CMIS standard page/reg addresses, the test aims to find the transceiver output RX equalizer settings that delivers the best PRBS BER performance. The test exhausts all the RX output equalizer combinations to find the optimal setting.
+Using CMIS standard page/reg addresses, the test aims to find the transceiver RX output equalization settings that delivers the best PRBS BER performance. The test exhausts all the RX output equalization combinations to find the optimal setting.
 
-* What It Does: Controls how the transceiver drives the signal back to the host, adjusting amplitude and emphasis to compensate for losses.
-* Why It Matters: If RX Output Equalization isn't tuned well, the host’s receiver might struggle to recover the data cleanly, leading to errors. 
-* How We Optimize It:
+* **What It Does**: Controls how the transceiver drives the signal back to the host, adjusting amplitude and emphasis to compensate for losses.
+* **Why It Matters**: If RX Output Equalization isn't tuned well, the host’s receiver might struggle to recover the data cleanly, leading to errors. 
+* **How We Optimize It**:
 
     * Sweep precursor, amplitude, and postcursor values to find the best setting.
     * Use BER feedback from PRBS testing to fine-tune the equalizer.
     * Ensure settings comply with CMIS-defined control registers.
 
-
-
 Setup
 ----------
 
 * The transceiver has three RX output equalizers to adjust: amplitude, precursor and postcursor.
-* Each tap has a range, ``<min>`` and ``<max>``, in dB
+* Each EQ has a range, ``<min>`` and ``<max>``, in code values.
 * PRBS measurement duration ``<duration>``.
 * PRBS polynomial ``<polynomial>``.
 
@@ -28,16 +31,16 @@ Setup
 Methodology
 --------------
 
-The principle of the test is to find the RX Ouput EQ settings that deliver the best PRBS BER performance. The test is based on the CMIS standard page/reg addresses. The test is automated and can be run on Xena test equipment with Z800 Freya modules.
+The principle of the test is to find the RX Output EQ settings that deliver the best PRBS BER performance. The test is based on the CMIS standard page/reg addresses. The test is automated and can be run on Xena test equipment with Z800 Freya modules.
 
-1. Check if the transceiver module supports the EQ control as described in `RX Output EQ Advertisement`_. If the transceiver module supports EQ control, the test can be run. Else, the test will abort.
+1. Check if the transceiver module supports **RX Output EQ Control** as described in `RX Output EQ Support Advertisement`_. If the transceiver module supports RX Output EQ Control, the test can be run. Else, the test will abort.
 2. Start PRBS test pattern transmission from the TX port to the RX port, and measure the PRBS BER at the RX port. The measurement is set to accumulative mode to get a stable BER value after a certain duration.
-3. If the transceiver module supports Hot Reconfiguration (``00h:2.6 SteppedConfigOnly``, ``00h:2.1-0 AutoConmmisioning``), write the RX output EQ settings to the RX Output EQ registers. This is implemented by writing ``10h:162-173``.
-4. Trigger the Provision-and-Commission procedure via ``10h:144`` by writing ``0xFF``.
+3. If the transceiver module supports **Hot Reconfiguration** (``00h:2.6 SteppedConfigOnly``, ``00h:2.1-0 AutoConmmisioning`` as described in :doc:`hot_reconfiguration`), write the **RX output EQ settings to the RX Output EQ registers**. This is implemented by writing ``10h:162-173``, as described in `RX Output EQ Register`_.
+4. Trigger the **Provision-and-Commission** procedure via ``10h:144`` by writing ``0xFF``.
 5. Read the ``ConfigStatus`` register to check if the RX output EQ settings are applied. This is implemented by reading ``11h:202-205``.
 6. If ``ConfigStatus == ConfigSuccess``, wait for a certain duration to allow the RX output EQ settings to stablize. Clear PRBS BER counter. Read the PRBS BER at the RX port for a certain duration, and save the last reading.
 7. If ``ConfigStatus != ConfigSuccess``, skip the PRBS measurement and continue to the next RX output EQ settings.
-8. An exhaustive search is performed to find the RX output EQ settings that yield the lowest PRBS BER. Thus, the test will repeat until all possible RX output EQ settings are tested.
+8. An **exhaustive search** is performed to find the RX output EQ settings that yield **the lowest PRBS BER**. Thus, the test will repeat until all possible RX output EQ settings are tested.
 
 .. figure:: images/cmis_control_set_data_flow.png
 
@@ -48,8 +51,8 @@ RX Equalizer Control
 
 RX EQ (RX output equalizer control) settings can be directly written and applied for RX output equalization if RX Output Controls are Supported.
 
-RX Output EQ Advertisement
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RX Output EQ Support Advertisement
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. _cmis_rx_eq_support:
 
@@ -69,3 +72,27 @@ RX Output EQ Register
     RX Output EQ Registers
 
 RX Output EQ register control: ``10h:162–173``, as defined in :numref:`cmis_rx_output_eq_reg`, can be used to control the RX output EQ settings.
+
+
+Importance of Transceiver RX Output Equalizer Optimization
+-----------------------------------------------------------
+
+**For Data Center Networks**
+
+When setting up a data center with new cables, manually tuning the transceiver output equalization towards the host is essential for ensuring optimal signal integrity. Here’s why:
+
+1. **Cable Lengths and Losses**: Different cables, such as longer Direct Attach Cables (DACs) or Active Optical Cables (AOCs), introduce varying levels of signal degradation.
+2. **Fixed TX Equalization**: Transmitters do not auto-adapt, requiring manual adjustment of pre-cursor, main cursor, and post-cursor values.
+3. **Limited RX Adaptation**: While the receiver (in a transceiver or host) can adapt using Continuous Time Linear Equalization (CTLE) or Decision Feedback Equalization (DFE), it may not fully compensate if the TX signal is excessively degraded.
+4. **Enhanced Signal Integrity**: Proper manual tuning enhances signal integrity, reduces errors, and ensures robust communication across diverse transmission environments.
+
+
+**For Transceiver Vendors**
+
+If you’re a transceiver vendor and the only equalization control you have is the RX output equalizer, proper tuning is critical because:
+
+1. **Lack of Control Over TX Equalization**: The TX equalization is set by the host, leaving you with no control over it.
+2. **Compensation for Host TX Equalization**: You must compensate for the host's TX equalization, regardless of whether it is optimized.
+3. **Signal Quality Determination**: The quality of the signal you send back to the host is determined by your RX output equalization.
+4. **Impact on Host Receiver**: If your RX output equalizer is not well-tuned, the host receiver may struggle, leading to higher bit error rates (BER), link instability, or even failure to establish a reliable connection. Your transceiver might seem low-quality, even if it isn’t! Data center engineers will blame your module if links are unstable. A well-tuned RX Output EQ ensures your module works seamlessly with different host TX settings.
+
