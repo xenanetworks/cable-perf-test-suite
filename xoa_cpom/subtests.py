@@ -383,9 +383,9 @@ class XenaTxInputEqOptimization:
 
             # check if the transceiver module supports Hot Reconfiguration
             result = []
-            hotreconfig_supported = await hot_reconfiguration_supported(rx_port_obj, self.logger_name)
+            hotreconfig_supported = await hot_reconfiguration_supported(tx_port_obj, self.logger_name)
             if not hotreconfig_supported:
-                logger.warning(f"Hot Reconfiguration is not supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}")
+                logger.warning(f"Hot Reconfiguration is not supported on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}")
             else:
                 # Enable Host Controlled EQ
                 await enable_host_controlled_eq(tx_port_obj, lane=self.lane, logger_name=self.logger_name)
@@ -395,14 +395,14 @@ class XenaTxInputEqOptimization:
                     logger.info(f"TX Input EQ: {eq_value}")
 
                     # Write the TX input EQ setting to the TX Input EQ registers.
-                    await tx_input_eq_write(port=rx_port_obj, lane=self.lane, value=eq_value, logger_name=self.logger_name)
+                    await tx_input_eq_write(port=tx_port_obj, lane=self.lane, value=eq_value, logger_name=self.logger_name)
                     
                     # Trigger the Provision-and-Commission procedure
-                    await trigger_provision_and_commission(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
+                    await trigger_provision_and_commission(port=tx_port_obj, lane=self.lane, logger_name=self.logger_name)
 
                     # Read ConfigStatus register to check if the EQ settings are applied.
                     while True:
-                        config_status = await read_config_status(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
+                        config_status = await read_config_status(port=tx_port_obj, lane=self.lane, logger_name=self.logger_name)
                         if config_status == ConfigStatus.ConfigInProgress:
                             logger.info(f"  ConfigStatus is still ConfigInProgress. Please wait for the configuration to complete.")
                             await asyncio.sleep(1)
