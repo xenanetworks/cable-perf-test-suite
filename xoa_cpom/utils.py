@@ -10,6 +10,7 @@ from .enums import *
 import logging
 import math
 from typing import List, Any
+import time, os
 
 # *************************************************************************************
 # func: read_prbs_ber
@@ -120,3 +121,42 @@ async def release_ports_in_list(port_obj_list: List[ports.Z800FreyaPort]) -> Non
     for _port in port_obj_list:
         await mgmt.free_port(_port)
     await asyncio.sleep(1.0)
+
+# *************************************************************************************
+# func: create_report_dir
+# description: Create report directory
+# *************************************************************************************
+async def create_report_dir(tester_obj: testers.L23Tester) -> str:
+    datetime = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+    path = "xena_cpom" + datetime
+    if not os.path.exists(path):
+        os.makedirs(path)
+    return path
+
+
+# *************************************************************************************
+# func: change_module_media
+# description: Change module media and port speed
+# *************************************************************************************
+async def change_module_media(tester_obj: testers.L23Tester, module_list: List[int], media: enums.MediaConfigurationType, port_speed: str, logger_name: str) -> None:
+
+    # Get logger
+    logger = logging.getLogger(logger_name)
+    logger.info(f"=============== Change Module Media and Port Speed ====================")
+    logger.info(f"{'Tester:':<20}{tester_obj.info.host}")
+    logger.info(f"{'Username:':<20}{tester_obj.session.owner_name}")
+    logger.info(f"{'Media:':<20}{media.name}")
+    logger.info(f"{'Port Speed:':<20}{port_speed}")
+
+    _port_count = int(port_speed.split("x")[0])
+    _port_speed = int(port_speed.split("x")[1].replace("G", ""))
+    _port_speed_config = [_port_speed*1000] * _port_count
+    _port_speed_config.insert(0, _port_count)
+    for _module_id in module_list:
+        _module = tester_obj.modules.obtain(_module_id)
+        await mgmt.free_module(module=_module, should_free_ports=True)
+        await mgmt.reserve_module(module=_module)
+        await _module.media.set(media_config=media)
+        await _module.cfp.config.set(portspeed_list=_port_speed_config)
+
+    logger.info(f"=============== Done ====================")

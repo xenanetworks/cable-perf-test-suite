@@ -15,9 +15,8 @@ async def main():
     stop_event = asyncio.Event()
     try:
         test = XenaCablePerfOptimization("test_config.yml")
-        await test.connect()
-        await test.rx_output_eq_optimization_test.run()
-        await test.disconnect()
+        await test.run()
+        
     except KeyboardInterrupt:
         stop_event.set()
 
