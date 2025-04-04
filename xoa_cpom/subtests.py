@@ -186,7 +186,7 @@ class XenaRxOutputEqOptimization:
                             await rx_output_eq_write(port=rx_port_obj, lane=self.lane, value=post_value, cursor=Cursor.Postcursor, logger_name=self.logger_name)
                             
                             # Trigger the Provision-and-Commission procedure
-                            await trigger_provision_commission(port=rx_port_obj, logger_name=self.logger_name)
+                            await trigger_provision_and_commission(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
 
                             # Read ConfigStatus register to check if the EQ settings are applied.
                             while True:
@@ -398,7 +398,7 @@ class XenaTxInputEqOptimization:
                     await tx_input_eq_write(port=rx_port_obj, lane=self.lane, value=eq_value, logger_name=self.logger_name)
                     
                     # Trigger the Provision-and-Commission procedure
-                    await trigger_provision_commission(port=rx_port_obj, logger_name=self.logger_name)
+                    await trigger_provision_and_commission(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
 
                     # Read ConfigStatus register to check if the EQ settings are applied.
                     while True:

@@ -128,7 +128,7 @@ async def release_ports_in_list(port_obj_list: List[ports.Z800FreyaPort]) -> Non
 # *************************************************************************************
 async def create_report_dir(tester_obj: testers.L23Tester) -> str:
     datetime = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-    path = "xena_cable_eq_perf_optimization_" + datetime
+    path = "xena_cpom" + datetime
     if not os.path.exists(path):
         os.makedirs(path)
     return path

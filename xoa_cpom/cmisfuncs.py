@@ -104,64 +104,73 @@ async def read_config_status(port: ports.Z800FreyaPort, lane: int, logger_name: 
     logger.info(f"  Read operation done. Value: ConfigStatus={ConfigStatus(_read).name}")
     return ConfigStatus(_read)
         
-
-
-
-
 # *************************************************************************************
-# func: trigger_provision
-# description: Trigger Provision procedure using the Staged Control Set 0 settings 
-# for host lane
-# (Write address 143 value 0xFF)
-# *************************************************************************************
-async def trigger_provision(port: ports.Z800FreyaPort, logger_name: str):
-    """Trigger Provision procedure using the Staged Control Set 0 settings for host lane (Write address 143 value 0xFF)
-    """
-    # Get logger
-    logger = logging.getLogger(logger_name)
-    logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Trigger Provision")
-
-    _page = 0x01
-    _start_addr = 143
-    _reg_addr = _start_addr
-    _size = 1
-    await port.transceiver.access_rw_seq(page_address=_page, register_address=_reg_addr, byte_count=_size).set(value=Hex("FF"))
-    await asyncio.sleep(1)
-
-# *************************************************************************************
-# func: trigger_provision_commission
+# func: trigger_provision_and_commission
 # description: Trigger Provision-and-Commission procedure using the 
 # Staged Control Set 0 settings for host lane
-# (Write address 143 value 0xFF)
+# (Write address 10h:144)
 # *************************************************************************************
-async def trigger_provision_commission(port: ports.Z800FreyaPort, logger_name: str):
+async def trigger_provision_and_commission(port: ports.Z800FreyaPort, lane: int, logger_name: str):
     """Trigger Provision-and-Commission procedure using the Staged Control Set 0 
-    settings for host lane (Write address 143 value 0xFF)
+    settings for host lane (Write address 144)
     """
     # Get logger
     logger = logging.getLogger(logger_name)
     logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Trigger Provision-and-Commission")
+    assert 1<=lane<=8
 
-    _page = 0x01
-    _start_addr = 143
+    _page = 0x10
+    _start_addr = 144
     _reg_addr = _start_addr
     _size = 1
-    await port.transceiver.access_rw_seq(page_address=_page, register_address=_reg_addr, byte_count=_size).set(value=Hex("FF"))
+
+    value = '{:02X}'.format(1<<(lane-1))
+    # 0b: No action for host lane <i>
+    # 1b: Trigger the Provision-and-Commission procedure using the Staged Control Set 0 settings for host lane <i>, with feedback provided in the associated ConfigStatusLane<i> field
+
+    await port.transceiver.access_rw_seq(page_address=_page, register_address=_reg_addr, byte_count=_size).set(value=Hex(value))
     await asyncio.sleep(1)
 
 # *************************************************************************************
-# func: apply_dp_init
-# description: Initialize the Data Path associated with host lane 
-# (Write address 128 with value 0x00)
+# func: trigger_provision
+# description: Trigger Provision procedure using the 
+# Staged Control Set 0 settings for host lane
+# (Write address 10h:143)
 # *************************************************************************************
-async def apply_dp_init(port: ports.Z800FreyaPort, logger_name: str):
-    """Initialize the Data Path associated with host lan (Write address 128 with value 0x00)
+async def trigger_provision(port: ports.Z800FreyaPort, lane: int, logger_name: str):
+    """Trigger Provision-and-Commission procedure using the Staged Control Set 0 
+    settings for host lane (Write address 143)
+    """
+    # Get logger
+    logger = logging.getLogger(logger_name)
+    logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Trigger Provision-and-Commission")
+    assert 1<=lane<=8
+
+    _page = 0x10
+    _start_addr = 143
+    _reg_addr = _start_addr
+    _size = 1
+
+    value = '{:02X}'.format(1<<(lane-1))
+    # 0b: No action for host lane <i>
+    # 1b: Trigger the Provision procedure using the Staged Control Set 0 settings for host lane <i>, with feedback provided in the associated ConfigStatusLane<i> field
+
+    await port.transceiver.access_rw_seq(page_address=_page, register_address=_reg_addr, byte_count=_size).set(value=Hex(value))
+    await asyncio.sleep(1)
+
+# *************************************************************************************
+# func: dp_initialize
+# description: Initialize the Data Path associated with host lane 
+# (Write address 10h:128 with value 0x00)
+# *************************************************************************************
+async def dp_initialize(port: ports.Z800FreyaPort, logger_name: str):
+    """Initialize the Data Path associated with host lane (Write address 128 with value 0x00)
     """
     # Get logger
     logger = logging.getLogger(logger_name)
     logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Initialize the Data Path associated with host lan (Write address 128 with value 0x00)")
 
-    _page = 0x01
+    _page = 0x10
     _start_addr = 128
     _reg_addr = _start_addr
     _size = 1
@@ -169,18 +178,18 @@ async def apply_dp_init(port: ports.Z800FreyaPort, logger_name: str):
     await asyncio.sleep(1)
 
 # *************************************************************************************
-# func: apply_dp_deinit
+# func: dp_deinitialize
 # description: Deinitialize the Data Path associated with host lane
-# (Write address 128 value with 0xFF)
+# (Write address 10h:128 value with 0xFF)
 # *************************************************************************************
-async def apply_dp_deinit(port: ports.Z800FreyaPort, logger_name: str):
+async def dp_deinitialize(port: ports.Z800FreyaPort, logger_name: str):
     """Deinitialize the Data Path associated with host lane (Write address 128 with 1)
     """
     # Get logger
     logger = logging.getLogger(logger_name)
     logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Deinitialize the Data Path associated with host lane (Write address 128 value with 0xFF)")
 
-    _page = 0x01
+    _page = 0x10
     _start_addr = 128
     _reg_addr = _start_addr
     _size = 1

@@ -81,14 +81,14 @@ class XenaCablePerfOptimization:
     @property
     def log_filename(self):
         if self.test_config.log_filename is None:
-            return "xena_cable_eq_perf_optimization.log"
+            return "xena_cpom.log"
         else:
             return self.test_config.log_filename
 
     @property
     def logger_name(self):
         if self.test_config.log_filename is None:
-            return "xena_cable_eq_perf_optimization"
+            return "xena_cpom"
         else:
             return self.log_filename.replace(".log", "")
         
@@ -109,7 +109,7 @@ class XenaCablePerfOptimization:
             self.tx_input_eq_optimization_test = XenaTxInputEqOptimization(self.tester_obj, self.test_config.tx_input_eq_test_config, self.logger_name)
 
     async def create_report_dir(self):
-        self.path = await create_report_dir(self.tester_obj)
+        # self.path = await create_report_dir(self.tester_obj)
         
         # configure basic logger
         logging.basicConfig(
