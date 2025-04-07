@@ -13,23 +13,30 @@ from typing import List, Any
 # func: hot_reconfiguration_supported
 # description: Check if the transceiver supports hot reconfiguration
 # *************************************************************************************
-async def hot_reconfiguration_supported(port: ports.Z800FreyaPort, logger_name: str) -> bool:
+async def hot_reconfiguration_supported(port: ports.Z800FreyaPort, logger_name: str) -> ReconfigurationSupport:
     """Check if the transceiver supports hot reconfiguration
     """
     # Get logger
     logger = logging.getLogger(logger_name)
     logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Check if supports hot reconfiguration")
-    resp = await port.transceiver.access_rw_seq(page_address=0x00, register_address=2, byte_count=1).get()
+
+    _page = 0x00
+    _start_addr = 2
+    _reg_addr = _start_addr
+    _size = 1
+    resp = await port.transceiver.access_rw_seq(page_address=_page, register_address=_reg_addr, byte_count=_size).get()
     int_value = int(resp.value, 16)
     stepped_config_only = (int_value >> 6) & 0x01
     if stepped_config_only == 0:
-        return True
+        return ReconfigurationSupport.Both
     else:
         auto_commisioning = int_value & 0x03
         if auto_commisioning == 2:
-            return True
+            return ReconfigurationSupport.Hot
+        elif auto_commisioning == 1:
+            return ReconfigurationSupport.Regular
         else:
-            return False
+            return ReconfigurationSupport.Neither
         
 # *************************************************************************************
 # func: rx_output_eq_control_supported
@@ -105,22 +112,30 @@ async def read_config_status(port: ports.Z800FreyaPort, lane: int, logger_name: 
     return ConfigStatus(_read)
         
 # *************************************************************************************
-# func: trigger_provision_and_commission
-# description: Trigger Provision-and-Commission procedure using the 
+# func: apply_change_on_lane
+# description: Trigger Provision-and-Commission/Provision procedure using the 
 # Staged Control Set 0 settings for host lane
-# (Write address 10h:144)
+# (Write address 10h:144/10h:143)
 # *************************************************************************************
-async def trigger_provision_and_commission(port: ports.Z800FreyaPort, lane: int, logger_name: str):
-    """Trigger Provision-and-Commission procedure using the Staged Control Set 0 
-    settings for host lane (Write address 144)
+async def apply_change_on_lane(port: ports.Z800FreyaPort, lane: int, logger_name: str, reconfig_support: ReconfigurationSupport):
+    """Trigger Provision-and-Commission/Provision procedure using the Staged Control Set 0 
+    settings for host lane (Write address 144/143)
     """
     # Get logger
     logger = logging.getLogger(logger_name)
-    logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Trigger Provision-and-Commission")
+    logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Apply Changes on Lane {lane}")
     assert 1<=lane<=8
 
     _page = 0x10
     _start_addr = 144
+    if reconfig_support == ReconfigurationSupport.Both:
+        _start_addr = 144
+    elif reconfig_support == ReconfigurationSupport.Regular:
+        _start_addr = 143
+    elif reconfig_support == ReconfigurationSupport.Hot:
+        _start_addr = 144
+    else:
+        raise ValueError("Reconfiguration support is neither regular nor hot")
     _reg_addr = _start_addr
     _size = 1
 
