@@ -37,3 +37,17 @@ class ConfigStatus(IntEnum):
     ConfigInProgress = 0x0C
     """Configuration in progress
     """
+
+class ReconfigurationSupport(IntEnum):
+    Neither = 0
+    """Neither Reconfiguration supported
+    """
+    Regular = 1
+    """Only Regualr Reconfiguration supported
+    """
+    Hot = 2
+    """Only Hot Reconfiguration supported
+    """
+    Both = 3
+    """Both Reconfiguration supported
+    """

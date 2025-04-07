@@ -24,7 +24,6 @@ By integrating automated RX Output Equalization and TX Input Equalization tuning
     step_by_step
     introduction
     understanding_rx_tx_eq
-    hot_reconfiguration
     rx_output_eq_test
     tx_input_eq_test
     

@@ -8,6 +8,7 @@ from xoa_driver.hlfuncs import mgmt
 from xoa_cpom.utils import *
 from xoa_cpom.cmisfuncs import *
 from .models import *
+from .enums import *
 import logging
 
 # *************************************************************************************
@@ -170,9 +171,11 @@ class XenaRxOutputEqOptimization:
 
             # check if the transceiver module supports Hot Reconfiguration
             result = []
-            hotreconfig_supported = await hot_reconfiguration_supported(rx_port_obj, self.logger_name)
-            if not hotreconfig_supported:
-                logger.warning(f"Hot Reconfiguration is not supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}")
+            reconfig_supported = await hot_reconfiguration_supported(rx_port_obj, self.logger_name)
+            logger.warning(f"Reconfiguration supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}: {reconfig_supported.name}")
+            if reconfig_supported == ReconfigurationSupport.Neither:
+                logger.warning(f"Neither Reconfiguration supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}")
+                logger.warning(f"RX Output EQ optimization Aborted!")
             else:
                 for amp_value in range(self.amp_min, self.amp_max+1):
                     for pre_value in range(self.pre_min, self.pre_max+1):
@@ -186,7 +189,7 @@ class XenaRxOutputEqOptimization:
                             await rx_output_eq_write(port=rx_port_obj, lane=self.lane, value=post_value, cursor=Cursor.Postcursor, logger_name=self.logger_name)
                             
                             # Trigger the Provision-and-Commission procedure
-                            await trigger_provision_and_commission(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
+                            await apply_change_on_lane(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name, reconfig_support=reconfig_supported)
 
                             # Read ConfigStatus register to check if the EQ settings are applied.
                             while True:
@@ -383,9 +386,11 @@ class XenaTxInputEqOptimization:
 
             # check if the transceiver module supports Hot Reconfiguration
             result = []
-            hotreconfig_supported = await hot_reconfiguration_supported(tx_port_obj, self.logger_name)
-            if not hotreconfig_supported:
-                logger.warning(f"Hot Reconfiguration is not supported on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}")
+            reconfig_supported = await hot_reconfiguration_supported(rx_port_obj, self.logger_name)
+            logger.warning(f"Reconfiguration supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}: {reconfig_supported.name}")
+            if reconfig_supported == ReconfigurationSupport.Neither:
+                logger.warning(f"Neither Reconfiguration supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}")
+                logger.warning(f"RX Output EQ optimization Aborted!")
             else:
                 # Enable Host Controlled EQ
                 await enable_host_controlled_eq(tx_port_obj, lane=self.lane, logger_name=self.logger_name)
@@ -398,7 +403,7 @@ class XenaTxInputEqOptimization:
                     await tx_input_eq_write(port=tx_port_obj, lane=self.lane, value=eq_value, logger_name=self.logger_name)
                     
                     # Trigger the Provision-and-Commission procedure
-                    await trigger_provision_and_commission(port=tx_port_obj, lane=self.lane, logger_name=self.logger_name)
+                    await apply_change_on_lane(port=tx_port_obj, lane=self.lane, logger_name=self.logger_name, reconfig_support=reconfig_supported)
 
                     # Read ConfigStatus register to check if the EQ settings are applied.
                     while True:

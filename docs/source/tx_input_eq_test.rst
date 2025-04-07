@@ -26,8 +26,8 @@ The principle of the test is to find the TX Input EQ setting that deliver the be
 
 1. Check if the transceiver module supports **TX Input EQ Host Control** as described in `TX Input EQ Host Control Support Advertisement`_. If the transceiver module supports TX Input EQ Host Control, the test can be run. Else, the test will abort.
 2. Start PRBS test pattern transmission from the TX port to the RX port, and measure the PRBS BER at the RX port. The measurement is set to accumulative mode to get a stable BER value after a certain duration.
-3. If the transceiver module supports **Hot Reconfiguration** (``00h:2.6 SteppedConfigOnly``, ``00h:2.1-0 AutoConmmisioning`` as described in :doc:`hot_reconfiguration`.), **disable adaptive input equalization** and **write the TX Input EQ settings to the TX Input EQ registers**, as described in `TX Input EQ Register`_.
-4. Trigger the **Provision-and-Commission** procedure via ``10h:144`` by writing ``0xFF``.
+3. If the transceiver module supports **Reconfiguration** (``00h:2.6 SteppedConfigOnly``, ``00h:2.1-0 AutoConmmisioning``), **disable adaptive input equalization** and **write the TX Input EQ settings to the TX Input EQ registers**, as described in `TX Input EQ Register`_.
+4. Trigger the **Provision-and-Commission** or **Provision** procedure via ``10h:144`` or ``10h:143``.
 5. Read the ``ConfigStatus`` register to check if the TX Input EQ settings are applied. This is implemented by reading ``11h:202-205``.
 6. If ``ConfigStatus == ConfigSuccess``, wait for a certain duration to allow the TX Input EQ settings to stablize. Clear PRBS BER counter. Read the PRBS BER at the RX port for a certain duration, and save the last reading.
 7. If ``ConfigStatus != ConfigSuccess``, skip the PRBS measurement and continue to the next TX Input EQ settings.
