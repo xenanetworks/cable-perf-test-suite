@@ -8,7 +8,6 @@ from xoa_driver.misc import Hex
 from xoa_driver.hlfuncs import mgmt
 from .enums import *
 import logging
-import math
 from typing import List, Any
 import time, os
 

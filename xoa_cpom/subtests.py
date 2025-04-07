@@ -8,7 +8,7 @@ from xoa_driver.hlfuncs import mgmt
 from xoa_cpom.utils import *
 from xoa_cpom.cmisfuncs import *
 from .models import *
-from enums import *
+from .enums import *
 import logging
 
 # *************************************************************************************
