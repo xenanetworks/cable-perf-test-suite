@@ -1,14 +1,7 @@
 # Xena Cable Performance Optimization Methodology
 
-In high-speed networking, signal integrity is everything. Whether it’s 100G, 400G, or 800G links, ensuring a low bit error rate (BER) is key to maintaining stable, high-performance data transmission. Two critical tuning parameters—RX Output Equalization and TX Input Equalization—play a major role in making sure transceivers and hosts work together smoothly. However, manually adjusting these settings is time-consuming and inconsistent, especially as data rates increase.
+As data center networks continue to scale, ensuring optimal signal integrity in high-speed interconnects has become a critical engineering challenge. With the increasing adoption of 100G, 400G, and 800G transceivers, two critical tuning parameters, **RX Output Equalization** and **TX Input Equalization**, play a major role in making sure transceivers and hosts work together smoothly. 
 
-This test suite provides an automated optimization framework that uses PRBS-based BER testing to dial in RX Output Equalization and TX Input Equalization for the best possible signal integrity, aligning with IEEE 802.3ck and CMIS standards.
+For cable manufacturers, including transceiver R&D, validation, and automated production testing, the ability to find the optimal EQ settings is essential. But what is more important is to know the BER output/repsonse curve to the varying EQ values, and the range of the BER curve. This is crucial for ensuring that the transceiver can operate reliably in various environments with different switch vendor implementations.
 
-## Why Xena Cable Performance Optimization Methodology?
-
-* Eliminates manual equalization tuning, saving time for network engineers.
-* Optimizes transceivers for low BER and high signal integrity across all lanes.
-* Fully compliant with CMIS and IEEE 802.3ck, ensuring industry-standard performance.
-* Automates PRBS-based stress testing to verify link stability.
-
-By integrating automated RX Output Equalization and TX Input Equalization tuning, Xena Cable Performance Optimization Methodology delivers a consistent, repeatable, and high-performance transceiver optimization process, ensuring reliable network links in data centers, high-speed interconnects, and enterprise networking environments.
+However, manual equalization tuning is inefficient, requiring extensive trial-and-error adjustments to identify the optimal pre-cursor, main cursor, and post-cursor settings. To streamline this process, **Xena Cable Performance Optimization Methodology** provides an automated transceiver equalization optimization procedure, allowing you to quickly and accurately test your transceivers and cables with Xena's high-performance test equipment [Z800 Freya](https://xenanetworks.com/freya-800g-pam4-ethernet-testing-112gbps-serdes/).

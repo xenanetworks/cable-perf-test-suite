@@ -59,6 +59,6 @@ class CablePerformanceTestConfig(BaseModel):
     password: Optional[str] = None
     tcp_port: Optional[int] = None
     log_filename: Optional[str] = None
-    
+    csv_report_filename: str
     rx_output_eq_test_config: Optional[RXOutputEqTestConfig] = None
     tx_input_eq_test_config: Optional[TxInputEqTestConfig] = None

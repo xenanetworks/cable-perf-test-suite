@@ -11,6 +11,7 @@ import asyncio
 from xoa_driver import testers, modules, ports, enums
 from xoa_driver.hlfuncs import mgmt
 from xoa_cpom.utils import *
+from xoa_cpom.cmisfuncs import *
 import logging
 
 #---------------------------
@@ -74,30 +75,28 @@ async def eq_rw_example(chassis_ip: str, p0: str, p1: str, lane: int, username: 
         port_1 = module_1.ports.obtain(_pid_1)
 
         # reserve the port and reset the port
-        await mgmt.free_module(module_0, should_free_ports=True)
-        await mgmt.reserve_port(port_0)
-        await mgmt.reset_port(port_0)
-        await mgmt.free_module(module_1, should_free_ports=True)
-        await mgmt.reserve_port(port_1)
-        await mgmt.reset_port(port_1)
+        await mgmt.release_module(module_0, should_release_ports=True)
+        await mgmt.reserve_port(port_0, reset=True)
+        await mgmt.release_module(module_1, should_release_ports=True)
+        await mgmt.reserve_port(port_1, reset=True)
         await asyncio.sleep(WAIT_TIME)
 
         # read port 0 & 1
-        await output_eq_read(port=port_0, lane=lane, cursor=Cursor.Amplitude, logger_name=logger_name)
-        await output_eq_read(port=port_0, lane=lane, cursor=Cursor.Precursor, logger_name=logger_name)
-        await output_eq_read(port=port_0, lane=lane, cursor=Cursor.Postcursor, logger_name=logger_name)
-        await output_eq_read(port=port_1, lane=lane, cursor=Cursor.Amplitude, logger_name=logger_name)
-        await output_eq_read(port=port_1, lane=lane, cursor=Cursor.Precursor, logger_name=logger_name)
-        await output_eq_read(port=port_1, lane=lane, cursor=Cursor.Postcursor, logger_name=logger_name)
+        await rx_output_eq_read(port=port_0, lane=lane, cursor=Cursor.Amplitude, logger_name=logger_name)
+        await rx_output_eq_read(port=port_0, lane=lane, cursor=Cursor.Precursor, logger_name=logger_name)
+        await rx_output_eq_read(port=port_0, lane=lane, cursor=Cursor.Postcursor, logger_name=logger_name)
+        await rx_output_eq_read(port=port_1, lane=lane, cursor=Cursor.Amplitude, logger_name=logger_name)
+        await rx_output_eq_read(port=port_1, lane=lane, cursor=Cursor.Precursor, logger_name=logger_name)
+        await rx_output_eq_read(port=port_1, lane=lane, cursor=Cursor.Postcursor, logger_name=logger_name)
         await asyncio.sleep(WAIT_TIME)
 
         # write port 0 & 1
-        await output_eq_write(port=port_0, lane=lane, db=1, cursor=Cursor.Amplitude, logger_name=logger_name)
-        await output_eq_write(port=port_0, lane=lane, db=2, cursor=Cursor.Precursor, logger_name=logger_name)
-        await output_eq_write(port=port_0, lane=lane, db=3, cursor=Cursor.Postcursor, logger_name=logger_name)
-        await output_eq_write(port=port_1, lane=lane, db=1, cursor=Cursor.Amplitude, logger_name=logger_name)
-        await output_eq_write(port=port_1, lane=lane, db=2, cursor=Cursor.Precursor, logger_name=logger_name)
-        await output_eq_write(port=port_1, lane=lane, db=3, cursor=Cursor.Postcursor, logger_name=logger_name)
+        await rx_output_eq_write(port=port_0, lane=lane, value=1, cursor=Cursor.Amplitude, logger_name=logger_name)
+        await rx_output_eq_write(port=port_0, lane=lane, value=2, cursor=Cursor.Precursor, logger_name=logger_name)
+        await rx_output_eq_write(port=port_0, lane=lane, value=3, cursor=Cursor.Postcursor, logger_name=logger_name)
+        await rx_output_eq_write(port=port_1, lane=lane, value=1, cursor=Cursor.Amplitude, logger_name=logger_name)
+        await rx_output_eq_write(port=port_1, lane=lane, value=2, cursor=Cursor.Precursor, logger_name=logger_name)
+        await rx_output_eq_write(port=port_1, lane=lane, value=3, cursor=Cursor.Postcursor, logger_name=logger_name)
         await asyncio.sleep(WAIT_TIME)
 
 if __name__ == "__main__":

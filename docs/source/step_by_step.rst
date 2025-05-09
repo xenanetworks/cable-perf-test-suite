@@ -4,12 +4,14 @@ Step-by-Step
 Prerequisite
 -------------
 
-1. Download the latest release `Cable Performance Optimization Methodology Releases <https://github.com/xenanetworks/cable-perf-test-suite/releases>`_
-2. Install the required Python packages by running the following command:
+1. **Python**: >= 3.11.
+2. **Download prooject**: Get`latest release <https://github.com/xenanetworks/cable-perf-test-suite/releases>`_.
+3. **Install dependencies using pip**:
 
 .. code-block:: bash
 
-      pip install -r requirements.txt
+      pip install -r requirements.txt # For Windows
+      pip3 install -r requirements.txt # For Linux/macOS
 
 The required packages are listed in the ``requirements.txt`` file.
 
@@ -30,6 +32,7 @@ Go to ``test/`` directory, change the ``test_config.yml`` to meet your test setu
       password: "xena"
       tcp_port: 22606
       log_filename: "xena_cpom.log"
+      csv_report_filename: "xena_cpom_report.csv
       rx_output_eq_test_config:
         module_list:
           - 3
@@ -76,6 +79,7 @@ Go to ``test/`` directory, change the ``test_config.yml`` to meet your test setu
 * ``password``: the password used to connect to the chassis
 * ``tcp_port``: the port number used to connect to the chassis
 * ``log_filename``: the log filename
+* ``csv_report_filename``: the CSV report filename
 * ``rx_output_eq_test_config``: the test configuration of RX output equalization optimization
 
     * ``module_list``: a list of module IDs to test  
@@ -131,7 +135,12 @@ Go to ``test/`` directory, change the ``test_config.yml`` to meet your test setu
 Run the Test
 ------------
 
-Then, run ``python test.py`` to start the test. The test log and results will be saved in the log file specified in the test configuration and also printed on the console.
+To start the test, run:
+
+* **Windows**: ``python test.py``
+* **Linux/macOS**: ``python3 test.py``
+
+The test log and results will be saved in a different folder each time you run the test, and will also be printed on the console.
 
 .. figure:: images/test_in_process.png
 
