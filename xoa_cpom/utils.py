@@ -105,9 +105,8 @@ async def reserve_reset_ports_in_list(tester_obj: testers.L23Tester, port_obj_li
     for _port in port_obj_list:
         _module_id = _port.kind.module_id
         _module = tester_obj.modules.obtain(_module_id)
-        await mgmt.free_module(module=_module, should_free_ports=False)
-        await mgmt.reserve_port(_port)
-        await mgmt.reset_port(_port)
+        await mgmt.release_module(module=_module, should_release_ports=False)
+        await mgmt.reserve_port(_port, reset=True)
     await asyncio.sleep(1.0)
 
 # *************************************************************************************
@@ -118,7 +117,7 @@ async def release_ports_in_list(port_obj_list: List[ports.Z800FreyaPort]) -> Non
     """Release ports in the port object list
     """
     for _port in port_obj_list:
-        await mgmt.free_port(_port)
+        await mgmt.release_port(_port)
     await asyncio.sleep(1.0)
 
 # *************************************************************************************
@@ -153,9 +152,11 @@ async def change_module_media(tester_obj: testers.L23Tester, module_list: List[i
     _port_speed_config.insert(0, _port_count)
     for _module_id in module_list:
         _module = tester_obj.modules.obtain(_module_id)
-        await mgmt.free_module(module=_module, should_free_ports=True)
+        await mgmt.release_module(module=_module, should_release_ports=True)
         await mgmt.reserve_module(module=_module)
         await _module.media.set(media_config=media)
         await _module.cfp.config.set(portspeed_list=_port_speed_config)
 
     logger.info(f"=============== Done ====================")
+
+    

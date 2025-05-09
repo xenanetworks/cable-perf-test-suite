@@ -64,7 +64,7 @@ async def tx_tap_autotune(chassis_ip: str, username: str, port: str, enable_auto
         port_obj = module_obj.ports.obtain(_pid_0)
 
         # reserve the port and reset the port
-        await mgmt.free_module(module_obj, should_free_ports=True)
+        await mgmt.release_module(module_obj, should_release_ports=True)
         await mgmt.reserve_port(port_obj)
         
         # get number of lanes from the port
@@ -79,7 +79,7 @@ async def tx_tap_autotune(chassis_ip: str, username: str, port: str, enable_auto
                 logger.info(f"Enable Tx Tap Autotune on Serdes Lane {i}")
                 await port_obj.serdes[i].phy.autotune.set_on()
         
-        await mgmt.free_port(port_obj)
+        await mgmt.release_port(port_obj)
         
 
 if __name__ == "__main__":
