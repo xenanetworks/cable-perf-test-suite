@@ -4,12 +4,14 @@ Step-by-Step
 Prerequisite
 -------------
 
-1. Download the latest release `Cable Performance Optimization Methodology Releases <https://github.com/xenanetworks/cable-perf-test-suite/releases>`_
-2. Install the required Python packages by running the following command:
+1. Your Python version should >= 3.11.
+2. Download the `latest release <https://github.com/xenanetworks/cable-perf-test-suite/releases>`_.
+3. Install the required Python packages by running the following command:
 
 .. code-block:: bash
 
-      pip install -r requirements.txt
+      pip install -r requirements.txt # For Windows
+      pip3 install -r requirements.txt # For Linux/macOS
 
 The required packages are listed in the ``requirements.txt`` file.
 
