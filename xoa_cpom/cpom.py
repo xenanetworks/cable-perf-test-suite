@@ -40,14 +40,13 @@ class XenaCablePerfOptimization:
 
         self.load_test_config(test_config_file)
 
-    def load_test_config(self, test_config_file: str):
-        with open(test_config_file, "r") as f:
-            test_config_dict = yaml.safe_load(f)
-            test_config_value = json.dumps(test_config_dict["test_config"])
-            self.test_config = CablePerformanceTestConfig.model_validate_json(test_config_value)
+    async def connect(self):
+        """Connect to the chassis and create a tester object, and create a report directory for the test report and logs.
+        """
+        self.tester_obj = await testers.L23Tester(host=self.chassis_ip, username=self.username, password=self.password, port=self.tcp_port, enable_logging=self.enable_comm_trace)
 
-    async def create_report_dir(self):
-        self.path = await create_report_dir(self.tester_obj)
+        self.path = await create_report_dir()
+
         # configure basic logger
         logging.basicConfig(
             format="%(asctime)s  %(message)s",
@@ -56,6 +55,47 @@ class XenaCablePerfOptimization:
                 logging.FileHandler(filename=os.path.join(self.path, self.log_filename), mode="a"),
                 logging.StreamHandler()]
             )
+        
+        logger = logging.getLogger(self.logger_name)
+        logger.info(f"#####################################################################")
+        logger.info(f"Welcome to Xena Cable Performance Optimization Test")
+        logger.info(f"Chassis:              {self.chassis_ip}")
+        logger.info(f"Username:             {self.username}")
+        logger.info(f"#####################################################################")
+
+    async def disconnect(self):
+        """Disconnect from the tester.
+        """
+        await self.tester_obj.session.logoff()
+        logger = logging.getLogger(self.logger_name)
+        logger.info(f"Gracefully disconnect from tester")
+        logger.info(f"Bye!")
+
+    def load_test_config(self, test_config_file: str):
+        """Load the test configuration from a YAML file, and validate it using the CablePerformanceTestConfig model.
+
+        :param test_config_file: test configuration file path
+        :type test_config_file: str
+        """
+        with open(test_config_file, "r") as f:
+            test_config_dict = yaml.safe_load(f)
+            test_config_value = json.dumps(test_config_dict["test_config"])
+            self.test_config = CablePerformanceTestConfig.model_validate_json(test_config_value)
+
+    
+    async def run_tx_input_eq_optimization_test(self):
+        """Run the TX Input Equalization optimization test, if configured.
+        """
+        if self.test_config.tx_input_eq_test_config is not None:
+            self.tx_input_eq_optimization_test = XenaTxInputEqOptimization(self.tester_obj, self.test_config.tx_input_eq_test_config, self.logger_name, self.report_filepathname)
+            await self.tx_input_eq_optimization_test.run()
+
+    async def run_rx_output_eq_optimization_test(self):
+        """Run the RX Output Equalization optimization test, if configured.
+        """
+        if self.test_config.rx_output_eq_test_config is not None:
+            self.rx_output_eq_optimization_test  = XenaRxOutputEqOptimization(self.tester_obj, self.test_config.rx_output_eq_test_config, self.logger_name, self.report_filepathname)
+            await self.rx_output_eq_optimization_test.run()
 
     @property
     def chassis_ip(self):
@@ -96,35 +136,13 @@ class XenaCablePerfOptimization:
     @property
     def report_filepathname(self):
         return os.path.join(self.path, self.test_config.csv_report_filename)
-        
     
-    async def connect(self):
-        self.tester_obj = await testers.L23Tester(host=self.chassis_ip, username=self.username, password=self.password, port=self.tcp_port, enable_logging=self.enable_comm_trace)
-
-        # Get logger
-        logger = logging.getLogger(self.logger_name)
-        logger.info(f"#####################################################################")
-        logger.info(f"Chassis:              {self.chassis_ip}")
-        logger.info(f"Username:             {self.username}")
-        logger.info(f"#####################################################################")
-
-        if self.test_config.rx_output_eq_test_config is not None:
-            self.rx_output_eq_optimization_test  = XenaRxOutputEqOptimization(self.tester_obj, self.test_config.rx_output_eq_test_config, self.logger_name, self.report_filepathname)
-        if self.test_config.tx_input_eq_test_config is not None:
-            self.tx_input_eq_optimization_test = XenaTxInputEqOptimization(self.tester_obj, self.test_config.tx_input_eq_test_config, self.logger_name, self.report_filepathname)
-
-    
-
-    async def disconnect(self):
-        await self.tester_obj.session.logoff()
-
     async def run(self):
+        """Run the XenaCablePerfOptimization test.
+        """
         await self.connect()
-        await self.create_report_dir()
-        if self.rx_output_eq_optimization_test is not None:
-            await self.rx_output_eq_optimization_test.run()
-        if self.tx_input_eq_optimization_test is not None:
-            await self.tx_input_eq_optimization_test.run()
+        await self.run_rx_output_eq_optimization_test()
+        await self.run_tx_input_eq_optimization_test()
         await self.disconnect()
 
 

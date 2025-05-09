@@ -124,9 +124,9 @@ async def release_ports_in_list(port_obj_list: List[ports.Z800FreyaPort]) -> Non
 # func: create_report_dir
 # description: Create report directory
 # *************************************************************************************
-async def create_report_dir(tester_obj: testers.L23Tester) -> str:
+async def create_report_dir() -> str:
     datetime = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-    path = "xena_cpom" + datetime
+    path = "xena_cpom_" + datetime
     if not os.path.exists(path):
         os.makedirs(path)
     return path
@@ -140,23 +140,12 @@ async def change_module_media(tester_obj: testers.L23Tester, module_list: List[i
 
     # Get logger
     logger = logging.getLogger(logger_name)
-    logger.info(f"=============== Change Module Media and Port Speed ====================")
-    logger.info(f"{'Tester:':<20}{tester_obj.info.host}")
-    logger.info(f"{'Username:':<20}{tester_obj.session.owner_name}")
-    logger.info(f"{'Media:':<20}{media.name}")
-    logger.info(f"{'Port Speed:':<20}{port_speed}")
+    logger.info(f"Configuring test module {module_list} to {media.name} {port_speed}")
 
     _port_count = int(port_speed.split("x")[0])
     _port_speed = int(port_speed.split("x")[1].replace("G", ""))
-    _port_speed_config = [_port_speed*1000] * _port_count
-    _port_speed_config.insert(0, _port_count)
+
     for _module_id in module_list:
         _module = tester_obj.modules.obtain(_module_id)
-        await mgmt.release_module(module=_module, should_release_ports=True)
-        await mgmt.reserve_module(module=_module)
-        await _module.media.set(media_config=media)
-        await _module.cfp.config.set(portspeed_list=_port_speed_config)
-
-    logger.info(f"=============== Done ====================")
-
-    
+        await mgmt.set_module_media_config(module=_module, media=media)
+        await mgmt.set_module_port_config(module=_module, port_count=_port_count, port_speed=_port_speed,)

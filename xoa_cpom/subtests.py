@@ -30,17 +30,18 @@ class XenaRxOutputEqOptimization:
         self.report_gen.chassis = self.tester_obj.info.host
         self.report_filename = report_filename
 
-        # Get logger
         logger = logging.getLogger(self.logger_name)
-        logger.info(f"## RxOutputEqOptimalTest ##")
-        logger.info(f"Port Pair:            {self.port_pair_list}")
-        logger.info(f"Lane:                 {self.lane}")
-        logger.info(f"Amplitude Range:      [{self.amp_min}, {self.amp_max}]")
-        logger.info(f"PreCursor Range:      [{self.pre_min}, {self.pre_max}]")
-        logger.info(f"PostCursor Range:     [{self.post_min}, {self.post_max}]")
-        logger.info(f"Delay After Reset:    {self.delay_after_reset} seconds")
-        logger.info(f"Delay After EQ Write: {self.delay_after_eq_write} seconds")
-        logger.info(f"PRBS Duration:        {self.prbs_duration} seconds")
+        logger.info(f"=============== Rx Output Eq Test ===============")
+        logger.info(f"Test Config:")
+        logger.info(f"  Port Pair:            {self.port_pair_list}")
+        logger.info(f"  Lane:                 {self.lane}")
+        logger.info(f"  Amplitude Range:      [{self.amp_min}, {self.amp_max}]")
+        logger.info(f"  PreCursor Range:      [{self.pre_min}, {self.pre_max}]")
+        logger.info(f"  PostCursor Range:     [{self.post_min}, {self.post_max}]")
+        logger.info(f"  Delay After Reset:    {self.delay_after_reset} seconds")
+        logger.info(f"  Delay After EQ Write: {self.delay_after_eq_write} seconds")
+        logger.info(f"  PRBS Polynomial:      {self.prbs_polynomial.name}")
+        logger.info(f"  PRBS Duration:        {self.prbs_duration} seconds")
     
     @property
     def port_pair_list(self):
@@ -139,14 +140,14 @@ class XenaRxOutputEqOptimization:
     async def exhaustive_search(self, port_pair_list: List[dict]):
         # Get logger
         logger = logging.getLogger(self.logger_name)
+        logger.info(f"Exhaustive search started")
 
         # Reserve and reset ports
-        logger.info(f"Reserve and reset ports")
+        logger.info(f"Reserving and reseting ports {self.port_pair_list}")
         tx_port_list: List[ports.Z800FreyaPort] = get_port_list(self.tester_obj, port_pair_list, "tx")
         rx_port_list: List[ports.Z800FreyaPort] = get_port_list(self.tester_obj, port_pair_list, "rx")
         await reserve_reset_ports_in_list(self.tester_obj, tx_port_list)
         await reserve_reset_ports_in_list(self.tester_obj, rx_port_list)
-
         logger.info(f"Delay after reset: {self.delay_after_reset}s")
         await asyncio.sleep(self.delay_after_reset)
 
@@ -160,16 +161,15 @@ class XenaRxOutputEqOptimization:
         # exhaustive search of all cursor combinations
         for tx_port_obj, rx_port_obj in zip(tx_port_list, rx_port_list):
             logger.info(f"-- Port Pair: {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} -> {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id} --")
-            logger.info(f"Start exhaustive search of RX Output EQ")
             
             # configure prbs
-            logger.info(f"Configure PRBS polynomial: {self.prbs_polynomial}")
+            logger.info(f"Configuring PRBS polynomial to {self.prbs_polynomial}")
             polynomial = self.prbs_polynomial
             await tx_port_obj.pcs_pma.prbs_config.type.set(prbs_inserted_type=enums.PRBSInsertedType.PHY_LINE, polynomial=polynomial, invert=enums.PRBSInvertState.NON_INVERTED, statistics_mode=enums.PRBSStatisticsMode.ACCUMULATIVE)
             await rx_port_obj.pcs_pma.prbs_config.type.set(prbs_inserted_type=enums.PRBSInsertedType.PHY_LINE, polynomial=polynomial, invert=enums.PRBSInvertState.NON_INVERTED, statistics_mode=enums.PRBSStatisticsMode.ACCUMULATIVE)
 
             # start prbs
-            logger.info(f"Start PRBS on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} on Lane {self.lane}")
+            logger.info(f"Starting {self.prbs_polynomial} on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} on Lane {self.lane}")
             _serdes_index = self.lane - 1
             await tx_port_obj.l1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
 
@@ -179,7 +179,7 @@ class XenaRxOutputEqOptimization:
             logger.warning(f"Reconfiguration supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}: {reconfig_supported.name}")
             if reconfig_supported == ReconfigurationSupport.Neither:
                 logger.warning(f"Neither Reconfiguration supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}")
-                logger.warning(f"RX Output EQ optimization Aborted!")
+                logger.warning(f"TX Input EQ Test aborted!")
             else:
                 for amp_value in range(self.amp_min, self.amp_max+1):
                     for pre_value in range(self.pre_min, self.pre_max+1):
@@ -215,17 +215,17 @@ class XenaRxOutputEqOptimization:
                                 await asyncio.sleep(self.delay_after_eq_write)
 
                                 # clear counters
-                                logger.info(f"Clear PRBS counters")
+                                logger.info(f"Clearing PRBS counters")
                                 await rx_port_obj.pcs_pma.rx.clear.set()
                                 await tx_port_obj.pcs_pma.rx.clear.set()
 
                                 # measure duration
-                                logger.info(f"PRBS measure for {self.prbs_duration}s")
+                                logger.info(f"Measuring PRBS for {self.prbs_duration}s")
                                 await asyncio.sleep(self.prbs_duration)
 
                                 # read PRBS BER
                                 prbs_ber = await read_prbs_ber(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
-                                logger.info(f"Lane ({self.lane}) - Amplitude: {amp_value}, PreCursor: {pre_value}, PostCursor: {post_value}, PRBS BER: {prbs_ber}")
+                                logger.info(f"Lane ({self.lane}) Amplitude: {amp_value}, PreCursor: {pre_value}, PostCursor: {post_value}, PRBS BER: {prbs_ber}")
 
                                 # save result to report
                                 self.report_gen.record_data(port_name=f"Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}", lane=self.lane, amplitude=amp_value, precursor=pre_value, postcursor=post_value, prbs_ber=prbs_ber)
@@ -236,11 +236,11 @@ class XenaRxOutputEqOptimization:
                                 logger.info(f"Write operation failed. Skip the PRBS test.")
             
             # Generate report
-            logger.info(f"Generate report")
+            logger.info(f"Generatinging test report..")
             self.report_gen.generate_report(self.report_filename)
 
             # stop prbs
-            logger.info(f"Stop PRBS on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} on Lane {self.lane}")
+            logger.info(f"Stopping {self.prbs_polynomial} on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} on Lane {self.lane}")
             _serdes_index = self.lane - 1
             await tx_port_obj.l1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
 
@@ -250,6 +250,14 @@ class XenaRxOutputEqOptimization:
                 logger.info(f"Final sorted results:")
                 for i in sorted_result:
                     logger.info(f"Lane ({self.lane}) - Amplitude: {i['amp']}, PreCursor: {i['pre']}, PostCursor: {i['post']}, PRBS BER: {i['prbs_ber']}")
+                
+                logger.info(f"Best result: Amplitude: {sorted_result[0]['amp']}, PreCursor: {sorted_result[0]['pre']}, PostCursor: {sorted_result[0]['post']}, PRBS BER: {sorted_result[0]['prbs_ber']}")
+                logger.info(f"Writing the best result to RX Output EQ registers")
+                await rx_output_eq_write(port=rx_port_obj, lane=self.lane, value=sorted_result[0]['amp'], cursor=Cursor.Amplitude, logger_name=self.logger_name)
+                await rx_output_eq_write(port=rx_port_obj, lane=self.lane, value=sorted_result[0]['pre'], cursor=Cursor.Precursor, logger_name=self.logger_name)
+                await rx_output_eq_write(port=rx_port_obj, lane=self.lane, value=sorted_result[0]['post'], cursor=Cursor.Postcursor, logger_name=self.logger_name)
+                await apply_change_on_lane(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name, reconfig_support=reconfig_supported)
+
             else:
                 logger.info(f"No results found")
     
@@ -281,14 +289,16 @@ class XenaTxInputEqOptimization:
 
         # Get logger
         logger = logging.getLogger(self.logger_name)
-        logger.info(f"## TxInputEqOptimalTest ##")
-        logger.info(f"Port Pair:            {self.port_pair_list}")
-        logger.info(f"Lane:                 {self.lane}")
-        logger.info(f"TX EQ Range:          [{self.eq_min}, {self.eq_max}]")
-        logger.info(f"Delay After Reset:    {self.delay_after_reset} seconds")
-        logger.info(f"Delay After EQ Write: {self.delay_after_eq_write} seconds")
-        logger.info(f"PRBS Duration:        {self.prbs_duration} seconds")
-    
+        logger.info(f"=============== Tx Input Eq Test ===============")
+        logger.info(f"Test Config:")
+        logger.info(f"  Port Pair:            {self.port_pair_list}")
+        logger.info(f"  Lane:                 {self.lane}")
+        logger.info(f"  TX EQ Range:          [{self.eq_min}, {self.eq_max}]")
+        logger.info(f"  Delay After Reset:    {self.delay_after_reset} seconds")
+        logger.info(f"  Delay After EQ Write: {self.delay_after_eq_write} seconds")
+        logger.info(f"  PRBS Polynomial:      {self.prbs_polynomial.name}")
+        logger.info(f"  PRBS Duration:        {self.prbs_duration} seconds")
+
     @property
     def port_pair_list(self):
         __list = []
@@ -364,14 +374,14 @@ class XenaTxInputEqOptimization:
     async def exhaustive_search(self, port_pair_list: List[dict]):
         # Get logger
         logger = logging.getLogger(self.logger_name)
+        logger.info(f"Exhaustive search started")
 
         # Reserve and reset ports
-        logger.info(f"Reserve and reset ports")
+        logger.info(f"Reserving and reseting ports {self.port_pair_list}")
         tx_port_list: List[ports.Z800FreyaPort] = get_port_list(self.tester_obj, port_pair_list, "tx")
         rx_port_list: List[ports.Z800FreyaPort] = get_port_list(self.tester_obj, port_pair_list, "rx")
         await reserve_reset_ports_in_list(self.tester_obj, tx_port_list)
         await reserve_reset_ports_in_list(self.tester_obj, rx_port_list)
-
         logger.info(f"Delay after reset: {self.delay_after_reset}s")
         await asyncio.sleep(self.delay_after_reset)
 
@@ -385,16 +395,15 @@ class XenaTxInputEqOptimization:
         # exhaustive search of all cursor combinations
         for tx_port_obj, rx_port_obj in zip(tx_port_list, rx_port_list):
             logger.info(f"-- Port Pair: {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} -> {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id} --")
-            logger.info(f"Start exhaustive search of TX Input EQ")
             
             # configure prbs
-            logger.info(f"Configure PRBS polynomial: {self.prbs_polynomial}")
+            logger.info(f"Configuring PRBS polynomial to {self.prbs_polynomial}")
             polynomial = self.prbs_polynomial
             await tx_port_obj.pcs_pma.prbs_config.type.set(prbs_inserted_type=enums.PRBSInsertedType.PHY_LINE, polynomial=polynomial, invert=enums.PRBSInvertState.NON_INVERTED, statistics_mode=enums.PRBSStatisticsMode.ACCUMULATIVE)
             await rx_port_obj.pcs_pma.prbs_config.type.set(prbs_inserted_type=enums.PRBSInsertedType.PHY_LINE, polynomial=polynomial, invert=enums.PRBSInvertState.NON_INVERTED, statistics_mode=enums.PRBSStatisticsMode.ACCUMULATIVE)
 
             # start prbs
-            logger.info(f"Start PRBS on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} on Lane {self.lane}")
+            logger.info(f"Starting {self.prbs_polynomial} on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} on Lane {self.lane}")
             _serdes_index = self.lane - 1
             await tx_port_obj.l1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
 
@@ -404,14 +413,14 @@ class XenaTxInputEqOptimization:
             logger.warning(f"Reconfiguration supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}: {reconfig_supported.name}")
             if reconfig_supported == ReconfigurationSupport.Neither:
                 logger.warning(f"Neither Reconfiguration supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}")
-                logger.warning(f"RX Output EQ optimization Aborted!")
+                logger.warning(f"RX Output EQ Test Aborted!")
             else:
                 # Enable Host Controlled EQ
                 await enable_host_controlled_eq(tx_port_obj, lane=self.lane, logger_name=self.logger_name)
 
                 for eq_value in range(self.eq_min, self.eq_max+1):
 
-                    logger.info(f"TX Input EQ: {eq_value}")
+                    logger.info(f"Equalizer: {eq_value}")
 
                     # Write the TX input EQ setting to the TX Input EQ registers.
                     await tx_input_eq_write(port=tx_port_obj, lane=self.lane, value=eq_value, logger_name=self.logger_name)
@@ -439,17 +448,17 @@ class XenaTxInputEqOptimization:
                         await asyncio.sleep(self.delay_after_eq_write)
 
                         # clear counters
-                        logger.info(f"Clear PRBS counters")
+                        logger.info(f"Clearing PRBS counters")
                         await rx_port_obj.pcs_pma.rx.clear.set()
                         await tx_port_obj.pcs_pma.rx.clear.set()
 
                         # measure duration
-                        logger.info(f"PRBS measure for {self.prbs_duration}s")
+                        logger.info(f"Measuring PRBS for {self.prbs_duration}s")
                         await asyncio.sleep(self.prbs_duration)
 
                         # read PRBS BER
                         prbs_ber = await read_prbs_ber(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
-                        logger.info(f"Lane ({self.lane}) - TX Input EQ {eq_value}, PRBS BER: {prbs_ber}")
+                        logger.info(f"Lane ({self.lane}) Equalizer: {eq_value}, PRBS BER: {prbs_ber}")
 
                         # save result to report
                         self.report_gen.record_data(port_name=f"Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}", lane=self.lane, eq=eq_value, prbs_ber=prbs_ber)
@@ -463,11 +472,11 @@ class XenaTxInputEqOptimization:
                 await disable_host_controlled_eq(tx_port_obj, lane=self.lane, logger_name=self.logger_name)
             
             # Generate report
-            logger.info(f"Generate report")
+            logger.info(f"Generating test report...")
             self.report_gen.generate_report(self.report_filename)
             
             # stop prbs
-            logger.info(f"Stop PRBS on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} on Lane {self.lane}")
+            logger.info(f"Stopping {self.prbs_polynomial} on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} on Lane {self.lane}")
             _serdes_index = self.lane - 1
             await tx_port_obj.l1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
 
@@ -477,6 +486,8 @@ class XenaTxInputEqOptimization:
                 logger.info(f"Final sorted results:")
                 for i in sorted_result:
                     logger.info(f"Lane ({self.lane}) - TX EQ: {i['tx_eq']}, PRBS BER: {i['prbs_ber']}")
+                logger.info(f"Best result: TX EQ: {sorted_result[0]['tx_eq']}, PRBS BER: {sorted_result[0]['prbs_ber']}")
+                
             else:
                 logger.info(f"No results found")
     
