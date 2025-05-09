@@ -30,17 +30,7 @@ class XenaCablePerfOptimization:
         self.tester_obj: testers.L23Tester
         self.rx_output_eq_optimization_test: Optional[XenaRxOutputEqOptimization] = None
         """
-        Optimizing RX Output Equalization
-    
-        * What It Does: Controls how the transceiver drives the signal back to the host, adjusting amplitude and emphasis to compensate for losses.
-        * Why It Matters: If RX Output Equalization is off, the host’s receiver might struggle to recover the data cleanly, leading to errors.
-        
-        How We Optimize It:
-        
-        * Sweep pre-cursor, main-cursor, and post-cursor values to find the best setting.
-        * Use BER feedback from PRBS testing to fine-tune the equalizer.
-        * Ensure settings comply with CMIS-defined control registers.
-        
+        Optimizing RX Output Equalization        
         """
 
         self.tx_input_eq_optimization_test: Optional[XenaTxInputEqOptimization] = None
@@ -55,6 +45,17 @@ class XenaCablePerfOptimization:
             test_config_dict = yaml.safe_load(f)
             test_config_value = json.dumps(test_config_dict["test_config"])
             self.test_config = CablePerformanceTestConfig.model_validate_json(test_config_value)
+
+    async def create_report_dir(self):
+        self.path = await create_report_dir(self.tester_obj)
+        # configure basic logger
+        logging.basicConfig(
+            format="%(asctime)s  %(message)s",
+            level=logging.DEBUG,
+            handlers=[
+                logging.FileHandler(filename=os.path.join(self.path, self.log_filename), mode="a"),
+                logging.StreamHandler()]
+            )
 
     @property
     def chassis_ip(self):
@@ -91,6 +92,10 @@ class XenaCablePerfOptimization:
             return "xena_cpom"
         else:
             return self.log_filename.replace(".log", "")
+    
+    @property
+    def report_filepathname(self):
+        return os.path.join(self.path, self.test_config.csv_report_filename)
         
     
     async def connect(self):
@@ -104,21 +109,11 @@ class XenaCablePerfOptimization:
         logger.info(f"#####################################################################")
 
         if self.test_config.rx_output_eq_test_config is not None:
-            self.rx_output_eq_optimization_test  = XenaRxOutputEqOptimization(self.tester_obj, self.test_config.rx_output_eq_test_config, self.logger_name)
+            self.rx_output_eq_optimization_test  = XenaRxOutputEqOptimization(self.tester_obj, self.test_config.rx_output_eq_test_config, self.logger_name, self.report_filepathname)
         if self.test_config.tx_input_eq_test_config is not None:
-            self.tx_input_eq_optimization_test = XenaTxInputEqOptimization(self.tester_obj, self.test_config.tx_input_eq_test_config, self.logger_name)
+            self.tx_input_eq_optimization_test = XenaTxInputEqOptimization(self.tester_obj, self.test_config.tx_input_eq_test_config, self.logger_name, self.report_filepathname)
 
-    async def create_report_dir(self):
-        # self.path = await create_report_dir(self.tester_obj)
-        
-        # configure basic logger
-        logging.basicConfig(
-            format="%(asctime)s  %(message)s",
-            level=logging.DEBUG,
-            handlers=[
-                logging.FileHandler(filename=self.log_filename, mode="a"),
-                logging.StreamHandler()]
-            )
+    
 
     async def disconnect(self):
         await self.tester_obj.session.logoff()

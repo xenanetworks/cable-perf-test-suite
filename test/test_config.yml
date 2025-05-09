@@ -4,6 +4,7 @@ test_config:
   password: "xena"
   tcp_port: 22606
   log_filename: "xena_cpom.log"
+  csv_report_filename: "xena_cpom_report.csv"
   rx_output_eq_test_config: # This is the test configuration for RX output equalization (optional)
     module_list:
       - 3

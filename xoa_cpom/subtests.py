@@ -10,6 +10,7 @@ from xoa_cpom.cmisfuncs import *
 from .models import *
 from .enums import *
 import logging
+from .reportgen import *
 
 # *************************************************************************************
 # class: XenaRxOutputEqOptimization
@@ -21,10 +22,13 @@ class XenaRxOutputEqOptimization:
     """
     This class provides an automated optimization framework that uses PRBS-based BER testing to dial in RX Output Equalization afor the best possible signal integrity.
     """
-    def __init__(self, tester_obj: testers.L23Tester, test_config: RXOutputEqTestConfig, logger_name: str):
+    def __init__(self, tester_obj: testers.L23Tester, test_config: RXOutputEqTestConfig, logger_name: str, report_filename: str):
         self.tester_obj = tester_obj
         self.test_config = test_config
         self.logger_name = logger_name
+        self.report_gen = RxOutputEQTestReportGenerator()
+        self.report_gen.chassis = self.tester_obj.info.host
+        self.report_filename = report_filename
 
         # Get logger
         logger = logging.getLogger(self.logger_name)
@@ -223,11 +227,18 @@ class XenaRxOutputEqOptimization:
                                 prbs_ber = await read_prbs_ber(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
                                 logger.info(f"Lane ({self.lane}) - Amplitude: {amp_value}, PreCursor: {pre_value}, PostCursor: {post_value}, PRBS BER: {prbs_ber}")
 
+                                # save result to report
+                                self.report_gen.record_data(port_name=f"Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}", lane=self.lane, amplitude=amp_value, precursor=pre_value, postcursor=post_value, prbs_ber=prbs_ber)
+
                                 # remember the result
                                 result.append({"amp": amp_value, "pre": pre_value, "post": post_value, "prbs_ber": prbs_ber})
                             else:
                                 logger.info(f"Write operation failed. Skip the PRBS test.")
             
+            # Generate report
+            logger.info(f"Generate report")
+            self.report_gen.generate_report(self.report_filename)
+
             # stop prbs
             logger.info(f"Stop PRBS on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} on Lane {self.lane}")
             _serdes_index = self.lane - 1
@@ -260,10 +271,13 @@ class XenaTxInputEqOptimization:
     """
     This class provides an automated optimization framework that uses PRBS-based BER testing to dial in TX Input Equalization afor the best possible signal integrity.
     """
-    def __init__(self, tester_obj: testers.L23Tester, test_config: TxInputEqTestConfig, logger_name: str):
+    def __init__(self, tester_obj: testers.L23Tester, test_config: TxInputEqTestConfig, logger_name: str, report_filename: str):
         self.tester_obj = tester_obj
         self.test_config = test_config
         self.logger_name = logger_name
+        self.report_gen = TxInputEQTestReportGenerator()
+        self.report_gen.chassis = self.tester_obj.info.host
+        self.report_filename = report_filename
 
         # Get logger
         logger = logging.getLogger(self.logger_name)
@@ -437,6 +451,9 @@ class XenaTxInputEqOptimization:
                         prbs_ber = await read_prbs_ber(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
                         logger.info(f"Lane ({self.lane}) - TX Input EQ {eq_value}, PRBS BER: {prbs_ber}")
 
+                        # save result to report
+                        self.report_gen.record_data(port_name=f"Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}", lane=self.lane, eq=eq_value, prbs_ber=prbs_ber)
+
                         # remember the result
                         result.append({"tx_eq": eq_value, "prbs_ber": prbs_ber})
                     else:
@@ -444,6 +461,10 @@ class XenaTxInputEqOptimization:
                 
                 # Disable Host Controlled EQ
                 await disable_host_controlled_eq(tx_port_obj, lane=self.lane, logger_name=self.logger_name)
+            
+            # Generate report
+            logger.info(f"Generate report")
+            self.report_gen.generate_report(self.report_filename)
             
             # stop prbs
             logger.info(f"Stop PRBS on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} on Lane {self.lane}")
