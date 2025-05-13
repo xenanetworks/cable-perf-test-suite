@@ -143,7 +143,7 @@ async def change_module_media(tester_obj: testers.L23Tester, module_list: List[i
     logger.info(f"Configuring test module {module_list} to {media.name} {port_speed}")
 
     _port_count = int(port_speed.split("x")[0])
-    _port_speed = int(port_speed.split("x")[1].replace("G", ""))
+    _port_speed = int(port_speed.split("x")[1].replace("G", ""))*1000
 
     for _module_id in module_list:
         _module = tester_obj.modules.obtain(_module_id)
