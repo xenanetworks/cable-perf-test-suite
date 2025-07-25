@@ -179,8 +179,10 @@ class XenaRxOutputEqOptimization:
             logger.warning(f"Reconfiguration supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}: {reconfig_supported.name}")
             if reconfig_supported == ReconfigurationSupport.Neither:
                 logger.warning(f"Neither Reconfiguration supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}")
-                logger.warning(f"TX Input EQ Test aborted!")
+                logger.warning(f"RX Output EQ Test aborted!")
             else:
+                _appsel_code, _dp_id, _explicit_ctrl = await dp_read(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
+                await dp_write(port=rx_port_obj, lane=self.lane, appsel_code=_appsel_code, dp_id=_dp_id, explicit_ctrl=1, logger_name=self.logger_name)
                 for amp_value in range(self.amp_min, self.amp_max+1):
                     for pre_value in range(self.pre_min, self.pre_max+1):
                         for post_value in range(self.post_min, self.post_max+1):
@@ -413,8 +415,11 @@ class XenaTxInputEqOptimization:
             logger.warning(f"Reconfiguration supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}: {reconfig_supported.name}")
             if reconfig_supported == ReconfigurationSupport.Neither:
                 logger.warning(f"Neither Reconfiguration supported on Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}")
-                logger.warning(f"RX Output EQ Test Aborted!")
+                logger.warning(f"TX Input EQ Test Aborted!")
             else:
+                _appsel_code, _dp_id, _explicit_ctrl = await dp_read(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
+                await dp_write(port=rx_port_obj, lane=self.lane, appsel_code=_appsel_code, dp_id=_dp_id, explicit_ctrl=1, logger_name=self.logger_name)
+
                 # Enable Host Controlled EQ
                 await enable_host_controlled_eq(tx_port_obj, lane=self.lane, logger_name=self.logger_name)
 

@@ -147,5 +147,7 @@ async def change_module_media(tester_obj: testers.L23Tester, module_list: List[i
 
     for _module_id in module_list:
         _module = tester_obj.modules.obtain(_module_id)
+        await mgmt.release_module(module=_module, should_release_ports=True)
+        await mgmt.reserve_module(module=_module)
         await mgmt.set_module_media_config(module=_module, media=media)
         await mgmt.set_module_port_config(module=_module, port_count=_port_count, port_speed=_port_speed,)
