@@ -103,7 +103,7 @@ async def read_config_status(port: ports.Z800FreyaPort, lane: int, logger_name: 
     _size = 1
     resp = await port.transceiver.access_rw_seq(page_address=_page, register_address=_reg_addr, byte_count=_size).get()
     if lane % 2 == 0:
-        _tmp = int(resp.value, 16) & 0xF0
+        _tmp = int(resp.value, 16) & 0xF0 
         _read = _tmp >> 4
     else:
         _tmp = int(resp.value, 16) & 0x0F
