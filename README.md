@@ -1,4 +1,4 @@
-Xena Cable Equalizer Performance Test
+# Xena Cable Equalizer Performance Test
 
 As data center networks continue to scale, ensuring optimal signal integrity in high-speed interconnects has become a critical engineering challenge. With the increasing adoption of 100G, 400G, and 800G transceivers, two critical tuning parameters, **RX Output Equalization** and **TX Input Equalization**, play a major role in making sure transceivers and hosts work together smoothly. 
 
