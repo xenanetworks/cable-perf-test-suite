@@ -18,6 +18,7 @@ Xena Cable Performance Optimization Methodology
     understanding_rx_tx_eq
     rx_output_eq_test
     tx_input_eq_test
+    host_tx_eq_test
     
     
 
