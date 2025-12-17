@@ -6,7 +6,7 @@ from xoa_driver import testers, modules, ports, enums
 from xoa_driver.hlfuncs import mgmt
 from .utils import *
 from .models import *
-from .subtests import XenaRxOutputEqOptimization, XenaTxInputEqOptimization
+from .subtests import *
 import yaml, json
 from pathlib import Path
 import logging
@@ -28,14 +28,19 @@ class XenaCablePerfOptimization:
         self.test_config_file = test_config_file
         self.test_config: CablePerformanceTestConfig
         self.tester_obj: testers.L23Tester
-        self.rx_output_eq_optimization_test: Optional[XenaRxOutputEqOptimization] = None
+        self.rx_output_eq_optimization_test: Optional[XenaTcvrRxOutputEqOptimization] = None
         """
         Optimizing RX Output Equalization        
         """
 
-        self.tx_input_eq_optimization_test: Optional[XenaTxInputEqOptimization] = None
+        self.tx_input_eq_optimization_test: Optional[XenaTcvrTxInputEqOptimization] = None
         """
         Optimizing TX Input Equalization
+        """
+
+        self.host_tx_eq_optimization_test: Optional[XenaHostTxEqOptimization] = None
+        """
+        Optimizing Host TX Equalization
         """
 
         self.load_test_config(test_config_file)
@@ -43,7 +48,12 @@ class XenaCablePerfOptimization:
     async def connect(self):
         """Connect to the chassis and create a tester object, and create a report directory for the test report and logs.
         """
-        self.tester_obj = await testers.L23Tester(host=self.chassis_ip, username=self.username, password=self.password, port=self.tcp_port, enable_logging=self.enable_comm_trace)
+        self.tester_obj = await testers.L23Tester(
+            host=self.chassis_ip, 
+            username=self.username, 
+            password=self.password, 
+            port=self.tcp_port, 
+            enable_logging=self.enable_comm_trace)
 
         self.path = await create_report_dir()
 
@@ -86,16 +96,23 @@ class XenaCablePerfOptimization:
     async def run_tx_input_eq_optimization_test(self):
         """Run the TX Input Equalization optimization test, if configured.
         """
-        if self.test_config.tx_input_eq_test_config is not None:
-            self.tx_input_eq_optimization_test = XenaTxInputEqOptimization(self.tester_obj, self.test_config.tx_input_eq_test_config, self.logger_name, self.report_filepathname)
+        if self.test_config.tcvr_tx_input_eq_test_config is not None:
+            self.tx_input_eq_optimization_test = XenaTcvrTxInputEqOptimization(self.tester_obj, self.test_config.tcvr_tx_input_eq_test_config, self.logger_name, self.report_filepathname)
             await self.tx_input_eq_optimization_test.run()
 
     async def run_rx_output_eq_optimization_test(self):
         """Run the RX Output Equalization optimization test, if configured.
         """
-        if self.test_config.rx_output_eq_test_config is not None:
-            self.rx_output_eq_optimization_test  = XenaRxOutputEqOptimization(self.tester_obj, self.test_config.rx_output_eq_test_config, self.logger_name, self.report_filepathname)
+        if self.test_config.tcvr_rx_output_eq_test_config is not None:
+            self.rx_output_eq_optimization_test  = XenaTcvrRxOutputEqOptimization(self.tester_obj, self.test_config.tcvr_rx_output_eq_test_config, self.logger_name, self.report_filepathname)
             await self.rx_output_eq_optimization_test.run()
+
+    async def run_host_tx_eq_optimization_test(self):
+        """Run the Host TX Equalization optimization test, if configured.
+        """
+        if self.test_config.host_tx_eq_test_config is not None:
+            self.host_tx_eq_optimization_test = XenaHostTxEqOptimization(self.tester_obj, self.test_config.host_tx_eq_test_config, self.logger_name, self.report_filepathname)
+            await self.host_tx_eq_optimization_test.run()
 
     @property
     def chassis_ip(self):
@@ -143,6 +160,7 @@ class XenaCablePerfOptimization:
         await self.connect()
         await self.run_rx_output_eq_optimization_test()
         await self.run_tx_input_eq_optimization_test()
+        await self.run_host_tx_eq_optimization_test()
         await self.disconnect()
 
 

@@ -1,5 +1,5 @@
 =====================================================
-Xena Cable Equalizer Performance Test
+Xena Cable Performance Optimization Methodology
 =====================================================
 
 :Version: |version|

@@ -19,7 +19,7 @@ class PortPair(BaseModel):
     tx: str
     rx: str
 
-class RXOutputEqRange(BaseModel):
+class TcvrRxOutputEqRange(BaseModel):
     amp_min: int
     amp_max: int
     pre_min: int
@@ -27,7 +27,19 @@ class RXOutputEqRange(BaseModel):
     post_min: int
     post_max: int
 
-class RXOutputEqTestConfig(BaseModel):
+class TcvrTxInputEqRange(BaseModel):
+    min: int
+    max: int
+
+class HostTxEqPreset(BaseModel):
+    pre3: int
+    pre2: int
+    pre1: int
+    main: int
+    post1: int
+    post2: int
+
+class TcvrRxOutputEqTestConfig(BaseModel):
     module_list: list[int]
     port_pair_list: list[PortPair]
     module_media: str
@@ -35,14 +47,10 @@ class RXOutputEqTestConfig(BaseModel):
     lane: int
     delay_after_reset: int
     prbs_config: PRBSTestConfig
-    rx_output_eq_range: RXOutputEqRange
+    rx_output_eq_range: TcvrRxOutputEqRange
     delay_after_eq_write: int
 
-class TxInputEqRange(BaseModel):
-    min: int
-    max: int
-
-class TxInputEqTestConfig(BaseModel):
+class TcvrTxInputEqTestConfig(BaseModel):
     module_list: list[int]
     port_pair_list: list[PortPair]
     module_media: str
@@ -50,8 +58,20 @@ class TxInputEqTestConfig(BaseModel):
     lane: int
     delay_after_reset: int    
     prbs_config: PRBSTestConfig
-    tx_input_eq_range: TxInputEqRange
+    tx_input_eq_range: TcvrTxInputEqRange
     delay_after_eq_write: int
+
+class HostTxEqTestConfig(BaseModel):
+    module_list: list[int]
+    port_pair_list: list[PortPair]
+    module_media: str
+    port_speed: str
+    lane: int
+    delay_after_reset: int
+    prbs_config: PRBSTestConfig
+    delay_after_eq_write: int
+    target_ber: float
+    preset_tap_values: HostTxEqPreset
 
 class CablePerformanceTestConfig(BaseModel):
     chassis_ip: str
@@ -60,5 +80,6 @@ class CablePerformanceTestConfig(BaseModel):
     tcp_port: Optional[int] = None
     log_filename: Optional[str] = None
     csv_report_filename: str
-    rx_output_eq_test_config: Optional[RXOutputEqTestConfig] = None
-    tx_input_eq_test_config: Optional[TxInputEqTestConfig] = None
+    tcvr_rx_output_eq_test_config: Optional[TcvrRxOutputEqTestConfig] = None
+    tcvr_tx_input_eq_test_config: Optional[TcvrTxInputEqTestConfig] = None
+    host_tx_eq_test_config: Optional[HostTxEqTestConfig] = None

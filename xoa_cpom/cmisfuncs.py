@@ -7,13 +7,15 @@ from xoa_driver import  ports
 from xoa_driver.misc import Hex
 from .enums import *
 import logging
-from typing import List, Any
+from typing import List, Any, Union
+
+type FreyaEdunPort = Union[FreyaEdunPort, ports.Z1600EdunPort]
 
 # *************************************************************************************
 # func: hot_reconfiguration_supported
 # description: Check if the transceiver supports hot reconfiguration
 # *************************************************************************************
-async def hot_reconfiguration_supported(port: ports.Z800FreyaPort, logger_name: str) -> ReconfigurationSupport:
+async def hot_reconfiguration_supported(port: FreyaEdunPort, logger_name: str) -> ReconfigurationSupport:
     """Check if the transceiver supports hot reconfiguration
     """
     # Get logger
@@ -42,7 +44,7 @@ async def hot_reconfiguration_supported(port: ports.Z800FreyaPort, logger_name: 
 # func: rx_output_eq_control_supported
 # description: Check if the transceiver supports RX output eq control
 # *************************************************************************************
-async def rx_output_eq_control_supported(port: ports.Z800FreyaPort, logger_name: str) -> bool:
+async def rx_output_eq_control_supported(port: FreyaEdunPort, logger_name: str) -> bool:
     """Check if the transceiver supports RX output eq control
     """
     # Get logger
@@ -66,7 +68,7 @@ async def rx_output_eq_control_supported(port: ports.Z800FreyaPort, logger_name:
 # func: tx_input_eq_control_supported
 # description: Check if the transceiver supports TX input eq control
 # *************************************************************************************
-async def tx_input_eq_host_control_supported(port: ports.Z800FreyaPort, logger_name: str) -> bool:
+async def tx_input_eq_host_control_supported(port: FreyaEdunPort, logger_name: str) -> bool:
     """Check if the transceiver supports TX input eq control
     """
     # Get logger
@@ -89,7 +91,7 @@ async def tx_input_eq_host_control_supported(port: ports.Z800FreyaPort, logger_n
 # func: read_config_status
 # description: Read the config status of each lane
 # *************************************************************************************
-async def read_config_status(port: ports.Z800FreyaPort, lane: int, logger_name: str) -> ConfigStatus:
+async def read_config_status(port: FreyaEdunPort, lane: int, logger_name: str) -> ConfigStatus:
     """Read the config status of each lane
     """
     # Get logger
@@ -117,7 +119,7 @@ async def read_config_status(port: ports.Z800FreyaPort, lane: int, logger_name: 
 # Staged Control Set 0 settings for host lane
 # (Write address 10h:144/10h:143)
 # *************************************************************************************
-async def apply_change_on_lane(port: ports.Z800FreyaPort, lane: int, logger_name: str, reconfig_support: ReconfigurationSupport):
+async def apply_change_on_lane(port: FreyaEdunPort, lane: int, logger_name: str, reconfig_support: ReconfigurationSupport):
     """Trigger Provision-and-Commission/Provision procedure using the Staged Control Set 0 
     settings for host lane (Write address 144/143)
     """
@@ -152,7 +154,7 @@ async def apply_change_on_lane(port: ports.Z800FreyaPort, lane: int, logger_name
 # Staged Control Set 0 settings for host lane
 # (Write address 10h:143)
 # *************************************************************************************
-async def trigger_provision(port: ports.Z800FreyaPort, lane: int, logger_name: str):
+async def trigger_provision(port: FreyaEdunPort, lane: int, logger_name: str):
     """Trigger Provision-and-Commission procedure using the Staged Control Set 0 
     settings for host lane (Write address 143)
     """
@@ -178,7 +180,7 @@ async def trigger_provision(port: ports.Z800FreyaPort, lane: int, logger_name: s
 # description: Initialize the Data Path associated with host lane 
 # (Write address 10h:128 with value 0x00)
 # *************************************************************************************
-async def dp_initialize(port: ports.Z800FreyaPort, logger_name: str):
+async def dp_initialize(port: FreyaEdunPort, logger_name: str):
     """Initialize the Data Path associated with host lane (Write address 128 with value 0x00)
     """
     # Get logger
@@ -197,7 +199,7 @@ async def dp_initialize(port: ports.Z800FreyaPort, logger_name: str):
 # description: Deinitialize the Data Path associated with host lane
 # (Write address 10h:128 value with 0xFF)
 # *************************************************************************************
-async def dp_deinitialize(port: ports.Z800FreyaPort, logger_name: str):
+async def dp_deinitialize(port: FreyaEdunPort, logger_name: str):
     """Deinitialize the Data Path associated with host lane (Write address 128 with 1)
     """
     # Get logger
@@ -215,7 +217,7 @@ async def dp_deinitialize(port: ports.Z800FreyaPort, logger_name: str):
 # func: dp_read
 # description: Read AppSelCode, DataPathID, and ExplicitControl to a specified lane
 # *************************************************************************************
-async def dp_read(port: ports.Z800FreyaPort, lane: int, logger_name: str):
+async def dp_read(port: FreyaEdunPort, lane: int, logger_name: str):
     """Read AppSelCode, DataPathID, and ExplicitControl to a specified lane
     """
     # Get logger
@@ -242,7 +244,7 @@ async def dp_read(port: ports.Z800FreyaPort, lane: int, logger_name: str):
 # func: dp_write
 # description: Write AppSelCode, DataPathID, and ExplicitControl to a specified lane
 # *************************************************************************************
-async def dp_write(port: ports.Z800FreyaPort, lane: int, appsel_code: int, dp_id: int, explicit_ctrl: int, logger_name: str):
+async def dp_write(port: FreyaEdunPort, lane: int, appsel_code: int, dp_id: int, explicit_ctrl: int, logger_name: str):
     """Write AppSelCode, DataPathID, and ExplicitControl to a specified lane
     """
     # Get logger
@@ -268,7 +270,7 @@ async def dp_write(port: ports.Z800FreyaPort, lane: int, appsel_code: int, dp_id
 # func: rx_output_eq_write
 # description: Write output value to a specified cursor on a specified lane
 # *************************************************************************************
-async def rx_output_eq_write(port: ports.Z800FreyaPort, lane: int, value: int, cursor: Cursor, logger_name: str):
+async def rx_output_eq_write(port: FreyaEdunPort, lane: int, value: int, cursor: Cursor, logger_name: str):
     """Write output value to a specified cursor on a specified lane
     """
     # Get logger
@@ -305,7 +307,7 @@ async def rx_output_eq_write(port: ports.Z800FreyaPort, lane: int, value: int, c
 # func: rx_output_eq_read
 # description: Read value from a specified cursor on a specified lane
 # *************************************************************************************
-async def rx_output_eq_read(port: ports.Z800FreyaPort, lane: int, cursor: Cursor, logger_name: str) -> int:
+async def rx_output_eq_read(port: FreyaEdunPort, lane: int, cursor: Cursor, logger_name: str) -> int:
     """Read value from a specified cursor on a specified lane
     """
     # Get logger
@@ -333,7 +335,7 @@ async def rx_output_eq_read(port: ports.Z800FreyaPort, lane: int, cursor: Cursor
 # func: rx_output_eq_max_read
 # description: Read RX output EQ max value of a cursor supported by the transceiver
 # *************************************************************************************
-async def rx_output_eq_max_read(port: ports.Z800FreyaPort, cursor: Cursor, logger_name: str) -> int:
+async def rx_output_eq_max_read(port: FreyaEdunPort, cursor: Cursor, logger_name: str) -> int:
     """Read RX output EQ max value of a cursor supported by the transceiver
     """
     # Get logger
@@ -368,7 +370,7 @@ async def rx_output_eq_max_read(port: ports.Z800FreyaPort, cursor: Cursor, logge
 # func: tx_input_eq_max_read
 # description: Read TX input EQ max value supported by the transceiver
 # *************************************************************************************
-async def tx_input_eq_max_read(port: ports.Z800FreyaPort, logger_name: str) -> int:
+async def tx_input_eq_max_read(port: FreyaEdunPort, logger_name: str) -> int:
     """Read TX input EQ max value supported by the transceiver
     """
     # Get logger
@@ -390,7 +392,7 @@ async def tx_input_eq_max_read(port: ports.Z800FreyaPort, logger_name: str) -> i
 # func: enable_host_controlled_eq
 # description: Enable Host Controlled EQ for a lane
 # *************************************************************************************
-async def enable_host_controlled_eq(port: ports.Z800FreyaPort, lane: int, logger_name: str):
+async def enable_host_controlled_eq(port: FreyaEdunPort, lane: int, logger_name: str):
     """Set HostControl for a lane
     """
     # Get logger
@@ -422,7 +424,7 @@ async def enable_host_controlled_eq(port: ports.Z800FreyaPort, lane: int, logger
 # func: disable_host_controlled_eq
 # description: Disable Host Controlled EQ for a lane
 # *************************************************************************************
-async def disable_host_controlled_eq(port: ports.Z800FreyaPort, lane: int, logger_name: str):
+async def disable_host_controlled_eq(port: FreyaEdunPort, lane: int, logger_name: str):
     """Clear HostControl for a lane
     """
     # Get logger
@@ -454,7 +456,7 @@ async def disable_host_controlled_eq(port: ports.Z800FreyaPort, lane: int, logge
 # func: tx_input_eq_write
 # description: Write input value to a specified cursor on a specified lane
 # *************************************************************************************
-async def tx_input_eq_write(port: ports.Z800FreyaPort, lane: int, value: int, logger_name: str):
+async def tx_input_eq_write(port: FreyaEdunPort, lane: int, value: int, logger_name: str):
     """Write input dB value to a specified cursor on a specified lane
     """
     # Get logger
@@ -492,7 +494,7 @@ async def tx_input_eq_write(port: ports.Z800FreyaPort, lane: int, value: int, lo
 # func: tx_input_eq_read
 # description: Read TX input EQ value from a lane
 # *************************************************************************************
-async def tx_input_eq_read(port: ports.Z800FreyaPort, lane: int, logger_name: str) -> int:
+async def tx_input_eq_read(port: FreyaEdunPort, lane: int, logger_name: str) -> int:
     """Read TX input EQ value from a lane
     """
     # Get logger
