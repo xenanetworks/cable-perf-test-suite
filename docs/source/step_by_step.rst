@@ -96,6 +96,7 @@ Go to ``test/`` directory, change the ``test_config.yml`` to meet your test setu
           post1: 0
           post2: 10
         search_mode: "exhaustive"  # "heuristic" or "exhaustive"
+        search_taps: [0, -1, 1, -2, -3, 2]
 
 * ``chassis_ip``: the IP address of the chassis
 * ``username``: the name used to connect to the chassis and reserve ports
@@ -183,6 +184,7 @@ Go to ``test/`` directory, change the ``test_config.yml`` to meet your test setu
 
     * ``delay_after_eq_write``: waiting time in seconds after writing the cursor values
     * ``search_mode``: the search mode, can be either "heuristic" or "exhaustive". When exhaustive mode is selected, the target BER will be ignored. All possible combinations of EQ settings within the specified range will be tested to find the optimal settings. This mode is more time-consuming but guarantees finding the best settings. In heuristic mode, a more efficient algorithm is used to find good settings quickly, but it may not find the absolute best settings.
+    * ``search_taps``: a list of EQ taps to be adjusted during the test. 0 = main, -1 = pre1, -2 = pre2, -3 = pre3, 1 = post1, 2 = post2. The order of the taps in the list determines the sequence in which they are adjusted during the test.
 
 Run the Test
 ------------

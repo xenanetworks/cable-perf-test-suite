@@ -73,6 +73,7 @@ class HostTxEqTestConfig(BaseModel):
     target_ber: float
     preset_tap_values: HostTxEqPreset
     search_mode: str  # "heuristic" or "exhaustive"
+    search_taps: List[int]
 
 class CablePerformanceTestConfig(BaseModel):
     chassis_ip: str

@@ -588,6 +588,10 @@ class XenaHostTxEqOptimization:
     def search_mode(self):
         return self.test_config.search_mode
     
+    @property
+    def search_taps(self):
+        return self.test_config.search_taps
+    
     async def change_module_media(self):
         await change_module_media(self.tester_obj, self.module_list, self.module_media, self.port_speed, self.logger_name,)
 
@@ -667,7 +671,7 @@ class XenaHostTxEqOptimization:
             # heuristic search on host tx eq
             # Increment tap until PRBS BER gets worse
             if last_prbs_ber > self.target_ber:
-                for _tap_index in [0, -1, 1, -2, -3, 2]:
+                for _tap_index in self.search_taps:
                     logger.info(f"Increment c({_tap_index}) until PRBS BER gets worse")
                     while await change_tx_tap_value(tx_port_obj, _serdes_index, _tap_index, num_txeq_pre, num_txeq_post, tx_taps_max, tx_taps_min, "inc"):
                         
@@ -763,7 +767,7 @@ class XenaHostTxEqOptimization:
 
             # heuristic search on host tx eq
             # Increment tap until PRBS BER gets worse
-            for _tap_index in [0, -1, 1, -2, -3, 2]:
+            for _tap_index in self.search_taps:
                 # load preset tap values
                 logger.info(f"Loading preset tap values: {self.preset_tap_values}")
                 await tx_port_obj.layer1.serdes[_serdes_index].medium.tx.native.set(tap_values=self.preset_tap_values)
