@@ -254,12 +254,11 @@ class XenaTcvrRxOutputEqOptimization:
                     logger.info(f"Lane ({self.lane}) - Amplitude: {i['amp']}, PreCursor: {i['pre']}, PostCursor: {i['post']}, PRBS BER: {i['prbs_ber']}")
                 
                 logger.info(f"Best result: Amplitude: {sorted_result[0]['amp']}, PreCursor: {sorted_result[0]['pre']}, PostCursor: {sorted_result[0]['post']}, PRBS BER: {sorted_result[0]['prbs_ber']}")
-                logger.info(f"Writing the best result to RX Output EQ registers")
+                logger.info(f"Writing the best result to Rx Output Eq registers")
                 await rx_output_eq_write(port=rx_port_obj, lane=self.lane, value=sorted_result[0]['amp'], cursor=Cursor.Amplitude, logger_name=self.logger_name)
                 await rx_output_eq_write(port=rx_port_obj, lane=self.lane, value=sorted_result[0]['pre'], cursor=Cursor.Precursor, logger_name=self.logger_name)
                 await rx_output_eq_write(port=rx_port_obj, lane=self.lane, value=sorted_result[0]['post'], cursor=Cursor.Postcursor, logger_name=self.logger_name)
                 await apply_change_on_lane(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name, reconfig_support=reconfig_supported)
-
             else:
                 logger.info(f"No results found")
     
@@ -490,8 +489,8 @@ class XenaTcvrTxInputEqOptimization:
                 sorted_result = sorted(result, key = lambda x: x["prbs_ber"])
                 logger.info(f"Final sorted results:")
                 for i in sorted_result:
-                    logger.info(f"Lane ({self.lane}) - TX EQ: {i['tx_eq']}, PRBS BER: {i['prbs_ber']}")
-                logger.info(f"Best result: TX EQ: {sorted_result[0]['tx_eq']}, PRBS BER: {sorted_result[0]['prbs_ber']}")
+                    logger.info(f"Lane ({self.lane}) - Tcvr Tx Eq: {i['tx_eq']}, PRBS BER: {i['prbs_ber']}")
+                logger.info(f"Best result: Tcvr Tx Eq: {sorted_result[0]['tx_eq']}, PRBS BER: {sorted_result[0]['prbs_ber']}")
                 
             else:
                 logger.info(f"No results found")
@@ -740,6 +739,8 @@ class XenaHostTxEqOptimization:
         # exhaustive search per port pair
         for tx_port_obj, rx_port_obj in zip(tx_port_obj_list, rx_port_obj_list):
 
+            result = []
+
             cap_struct = await tx_port_obj.capabilities.get()
             num_txeq = cap_struct.tx_eq_tap_count
             num_txeq_pre = cap_struct.num_txeq_pre
@@ -767,8 +768,6 @@ class XenaHostTxEqOptimization:
             logger.info(f"Starting {self.prbs_polynomial.name} on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} on Lane {self.lane}")
             await tx_port_obj.layer1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
 
-            
-
             # heuristic search on host tx eq
             # Increment tap until PRBS BER gets worse
             for _tap_index in self.search_taps:
@@ -793,6 +792,7 @@ class XenaHostTxEqOptimization:
 
                 # save result to report
                 self.report_gen.record_data(port_name=f"Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}", lane=self.lane, eqs=self.preset_tap_values, prbs_ber=prbs_ber)
+                result.append({"tx_eq": self.preset_tap_values, "prbs_ber": prbs_ber})
 
                 logger.info(f"Increment c({_tap_index})")
                 while await change_tx_tap_value(tx_port_obj, _serdes_index, _tap_index, num_txeq_pre, num_txeq_post, tx_taps_max, tx_taps_min, "inc"):
@@ -814,8 +814,11 @@ class XenaHostTxEqOptimization:
                     prbs_ber = await read_prbs_ber(port=rx_port_obj, lane=self.lane, logger_name=self.logger_name)
                     tx_taps = await get_all_tx_tap_values(tx_port_obj, _serdes_index)
                     logger.info(f"Lane ({self.lane}) Equalizer: {tx_taps}, PRBS BER: {prbs_ber}")
+
                     # save result to report
                     self.report_gen.record_data(port_name=f"Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}", lane=self.lane, eqs=tx_taps, prbs_ber=prbs_ber)
+                    result.append({"tx_eq": tx_taps, "prbs_ber": prbs_ber})
+
                 logger.info(f"Generatinging test report..")    
                 self.report_gen.generate_report(self.report_filename)
 
@@ -827,6 +830,18 @@ class XenaHostTxEqOptimization:
             logger.info(f"Stopping {self.prbs_polynomial.name} on Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id} on Lane {self.lane}")
             _serdes_index = self.lane - 1
             await tx_port_obj.layer1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
+
+            # find the best
+            if len(result) > 0:
+                sorted_result = sorted(result, key = lambda x: x["prbs_ber"])
+                logger.info(f"Final sorted results:")
+                for i in sorted_result:
+                    logger.info(f"Lane ({self.lane}) - Host Tx Eq: {i['tx_eq']}, PRBS BER: {i['prbs_ber']}")
+                logger.info(f"Best result: Host Tx Eq: {sorted_result[0]['tx_eq']}, PRBS BER: {sorted_result[0]['prbs_ber']}")
+                logger.info(f"Writing the best result to Host Tx Eq")
+                await tx_port_obj.layer1.serdes[_serdes_index].medium.tx.native.set(tap_values=sorted_result[0]['tx_eq'])
+            else:
+                logger.info(f"No results found")
 
             
     
