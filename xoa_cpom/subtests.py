@@ -819,9 +819,6 @@ class XenaHostTxEqOptimization:
                     self.report_gen.record_data(port_name=f"Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}", lane=self.lane, eqs=tx_taps, prbs_ber=prbs_ber)
                     result.append({"tx_eq": tx_taps, "prbs_ber": prbs_ber})
 
-                logger.info(f"Generatinging test report..")    
-                self.report_gen.generate_report(self.report_filename)
-
             # Generate report
             logger.info(f"Generatinging test report..")
             self.report_gen.generate_report(self.report_filename)

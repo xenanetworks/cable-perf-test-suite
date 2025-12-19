@@ -112,7 +112,7 @@ class HostTxEqTestReportGenerator:
         for i in range(self.num_txtaps_post):
             self.rec[f"Post{i+1}"] = 0
         self.rec["PRBS BER"] = 0.0
-        self.fieldnames = ["Time", "Lane"] + [f"Pre{i+1}" for i in range(self.num_txtaps_pre)] + ["Main"] + [f"Post{i+1}" for i in range(self.num_txtaps_post)] + ["PRBS BER"]
+        self.fieldnames = ["Time", "Lane"] + [f"Pre{self.num_txtaps_pre-i}" for i in range(self.num_txtaps_pre)] + ["Main"] + [f"Post{i+1}" for i in range(self.num_txtaps_post)] + ["PRBS BER"]
         
     def record_data(self, port_name: str, lane: int, eqs: List[int], prbs_ber: float) -> None:
         if len(eqs) != self.num_tx_taps:
