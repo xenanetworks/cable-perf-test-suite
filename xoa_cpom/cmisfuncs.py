@@ -9,7 +9,7 @@ from .enums import *
 import logging
 from typing import List, Any, Union
 
-type FreyaEdunPort = Union[FreyaEdunPort, ports.Z1600EdunPort]
+type FreyaEdunPort = Union[ports.Z800FreyaPort, ports.Z1600EdunPort]
 
 # *************************************************************************************
 # func: hot_reconfiguration_supported

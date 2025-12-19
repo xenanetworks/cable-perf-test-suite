@@ -72,6 +72,7 @@ class HostTxEqTestConfig(BaseModel):
     delay_after_eq_write: int
     target_ber: float
     preset_tap_values: HostTxEqPreset
+    search_mode: str  # "heuristic" or "exhaustive"
 
 class CablePerformanceTestConfig(BaseModel):
     chassis_ip: str

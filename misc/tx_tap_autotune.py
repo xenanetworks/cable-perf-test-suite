@@ -74,10 +74,10 @@ async def tx_tap_autotune(chassis_ip: str, username: str, port: str, enable_auto
         for i in range(serdes_count):
             if enable_autotune == False:
                 logger.info(f"Disable Tx Tap Autotune on Serdes Lane {i}")
-                await port_obj.serdes[i].phy.autotune.set_off()
+                await port_obj.layer1.serdes[i].medium.tap_autotune.set_off()
             else:
                 logger.info(f"Enable Tx Tap Autotune on Serdes Lane {i}")
-                await port_obj.serdes[i].phy.autotune.set_on()
+                await port_obj.layer1.serdes[i].medium.autotune.set_on()
         
         await mgmt.release_port(port_obj)
         

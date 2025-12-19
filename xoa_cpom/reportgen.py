@@ -97,17 +97,41 @@ class HostTxEqTestReportGenerator:
         self.fieldnames = ["Time", "Lane", "Equalizers", "PRBS BER"]
         self.datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         self.database = {}
+        self.num_tx_taps = 0
+        self.num_txtaps_pre = 0
+        self.num_txtaps_post = 0
 
+    def setup_record_structure(self) -> None:
+        # Generate dict with "pre", "post" keys for tx taps depending on the num_txtaps_pre and num_txtaps_post
+        self.rec = dict()
+        self.rec["Time"] = ""
+        self.rec["Lane"] = 0
+        for i in range(self.num_txtaps_pre):
+            self.rec[f"Pre{self.num_txtaps_pre-i}"] = 0
+        self.rec["Main"] = 0
+        for i in range(self.num_txtaps_post):
+            self.rec[f"Post{i+1}"] = 0
+        self.rec["PRBS BER"] = 0.0
+        self.fieldnames = ["Time", "Lane"] + [f"Pre{i+1}" for i in range(self.num_txtaps_pre)] + ["Main"] + [f"Post{i+1}" for i in range(self.num_txtaps_post)] + ["PRBS BER"]
+        
     def record_data(self, port_name: str, lane: int, eqs: List[int], prbs_ber: float) -> None:
+        if len(eqs) != self.num_tx_taps:
+            raise ValueError(f"Length of eqs {len(eqs)} does not match num_tx_taps {self.num_tx_taps}")
+        
         time_str = time.strftime("%H:%M:%S", time.localtime())
         if port_name not in self.database:
             self.database[port_name] = []
-        self.database[port_name].append({
-                "Time": time_str,
-                "Lane": lane,
-                "Equalizers": eqs,
-                "PRBS BER": '{:.2e}'.format(abs(prbs_ber))
-            })
+        self.rec = dict()
+        self.rec["Time"] = time_str
+        self.rec["Lane"] = lane
+        for i in range(self.num_txtaps_pre):
+            self.rec[f"Pre{self.num_txtaps_pre - i}"] = eqs[i]
+        self.rec["Main"] = eqs[self.num_txtaps_pre]
+        for i in range(self.num_txtaps_post):
+            self.rec[f"Post{i+1}"] = eqs[self.num_txtaps_pre + 1 + i]
+        self.rec["PRBS BER"] = '{:.2e}'.format(abs(prbs_ber))
+
+        self.database[port_name].append(self.rec)
             
     
     def generate_report(self, filename: str) -> None:

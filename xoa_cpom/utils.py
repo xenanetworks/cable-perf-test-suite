@@ -30,7 +30,7 @@ async def read_prbs_ber(port: FreyaEdunPort, lane: int, logger_name: str) -> flo
     # read starting PRBS BER
     _prbs_ber = 0.0
     _serdes = lane - 1
-    resp = await port.l1.serdes[_serdes].prbs.status.get()
+    resp = await port.layer1.serdes[_serdes].prbs.status.get()
     _prbs_bits = resp.byte_count * 8
     _prbs_errors = resp.error_count
     if _prbs_errors == 0:
@@ -70,7 +70,7 @@ async def test_done(port: FreyaEdunPort, lane: int, current_ber: float, target_b
 
     # stop PRBS on port
     _serdes = lane - 1
-    await port.l1.serdes[_serdes].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
+    await port.layer1.serdes[_serdes].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
 
 # *************************************************************************************
 # func: get_port_list
@@ -168,7 +168,7 @@ async def get_one_tx_tap_value(port: FreyaEdunPort, serdes_index: int, tap_index
 
     :return: (tap_value, tap_max, tap_min)
     """
-    resp = await port.l1.serdes[serdes_index].medium.tx.native.get()
+    resp = await port.layer1.serdes[serdes_index].medium.tx.native.get()
     tx_taps = resp.tap_values
     
     if tap_index < 0 and abs(tap_index) > num_txeq_pre:
@@ -190,7 +190,7 @@ async def get_all_tx_tap_values(port: FreyaEdunPort, serdes_index: int,) -> List
     """Get TX tap value from the tx_taps list.
     -1 means pre1, -2 means pre2, 0 means main, 1 means post1, 2 means post2
     """
-    resp = await port.l1.serdes[serdes_index].medium.tx.native.get()
+    resp = await port.layer1.serdes[serdes_index].medium.tx.native.get()
     tx_taps = resp.tap_values
     return tx_taps
 
@@ -199,54 +199,63 @@ async def change_tx_tap_value(port: FreyaEdunPort, serdes_index: int, tap_index:
     """Increase one Tx tap value by step.
     -1 means pre1, -2 means pre2, 0 means main, 1 means post1, 2 means post2
     """
-    resp = await port.l1.serdes[serdes_index].medium.tx.native.get()
-    tx_taps = resp.tap_values
-
     if tap_index < 0 and abs(tap_index) > num_txeq_pre:
         raise ValueError("Invalid TXEQ_PRE tap index")
     if tap_index > 0 and tap_index > num_txeq_post:
         raise ValueError("Invalid TXEQ_POST tap index")
     
-    _index = 0
-    if tap_index == 0:
-        _index = num_txeq_pre
-    elif tap_index < 0:
-        _index = num_txeq_pre + tap_index
-    else:
-        _index = num_txeq_pre + tap_index
-
-    if mode == "inc":
-        if tap_index == -1 or tap_index == 1:
-            if tx_taps[_index] <= tx_taps_min[_index]:
-                return 0
-            else:
-                tx_taps[_index] -= 1
-                await port.l1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
-                return 1
-        else:
-            if tx_taps[_index] >= tx_taps_max[_index]:
-                return 0
-            else:
-                tx_taps[_index] += 1
-                await port.l1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
-                return 1
-    elif mode == "dec":
-        if tap_index == -1 or tap_index == 1:
-            if tx_taps[_index] >= tx_taps_max[_index]:
-                return 0
-            else:
-                tx_taps[_index] += 1
-                await port.l1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
-                return 1
-        else:
-            if tx_taps[_index] <= tx_taps_min[_index]:
-                return 0
-            else:
-                tx_taps[_index] -= 1
-                await port.l1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
-                return 1
-    else:
+    max_sum = 0
+    if isinstance(port, ports.Z800FreyaPort):
+        max_sum = 87
+    elif isinstance(port, ports.Z1600EdunPort):
+        max_sum = 168
+    
+    resp = await port.layer1.serdes[serdes_index].medium.tx.native.get()
+    tx_taps = resp.tap_values
+    current_sum = sum(abs(i) for i in tx_taps)
+    if current_sum >= max_sum:
         return 0
+    else:
+        _index = 0
+        if tap_index == 0:
+            _index = num_txeq_pre
+        elif tap_index < 0:
+            _index = num_txeq_pre + tap_index
+        else:
+            _index = num_txeq_pre + tap_index
+
+        if mode == "inc":
+            if tap_index == -1 or tap_index == 1:
+                if tx_taps[_index] <= tx_taps_min[_index]:
+                    return 0
+                else:
+                    tx_taps[_index] -= 1
+                    await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
+                    return 1
+            else:
+                if tx_taps[_index] >= tx_taps_max[_index]:
+                    return 0
+                else:
+                    tx_taps[_index] += 1
+                    await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
+                    return 1
+        elif mode == "dec":
+            if tap_index == -1 or tap_index == 1:
+                if tx_taps[_index] >= tx_taps_max[_index]:
+                    return 0
+                else:
+                    tx_taps[_index] += 1
+                    await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
+                    return 1
+            else:
+                if tx_taps[_index] <= tx_taps_min[_index]:
+                    return 0
+                else:
+                    tx_taps[_index] -= 1
+                    await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
+                    return 1
+        else:
+            return 0
 
     
 

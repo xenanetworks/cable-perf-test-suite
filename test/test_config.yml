@@ -26,6 +26,24 @@ test_config:
   #     post_min: 0
   #     post_max: 7
   #   delay_after_eq_write: 2
+  tcvr_tx_input_eq_test_config:
+        module_list:
+          - 3
+          - 6
+        port_pair_list:
+          - tx: "3/0"
+            rx: "6/0"
+        module_media: "QSFPDD800"
+        port_speed: "1x800G"
+        lane: 1
+        delay_after_reset: 2
+        prbs_config:
+          polynomial: "PRBS31"
+          duration: 2
+        tx_input_eq_range:
+          min: 0
+          max: 12
+        delay_after_eq_write: 2
   host_tx_eq_test_config: # This is the test configuration for RX output equalization (optional)
     module_list:
       - 0
@@ -43,9 +61,10 @@ test_config:
     target_ber: 1e-10
     preset_tap_values:
       pre3: 0
-      pre2: 10
-      pre1: -30
-      main: 103
+      pre2: 0
+      pre1: 0
+      main: 100
       post1: 0
-      post2: 18
+      post2: 10
+    search_mode: "exhaustive"  # "heuristic" or "exhaustive"
 
