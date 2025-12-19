@@ -31,7 +31,7 @@ class XenaTcvrRxOutputEqOptimization:
         self.report_filename = report_filename
 
         logger = logging.getLogger(self.logger_name)
-        logger.info(f"=============== Rx Output Eq Test ===============")
+        logger.info(f"=============== Tcvr Rx Output Equalization Optimization Test ===============")
         logger.info(f"Test Config:")
         logger.info(f"  Port Pair:            {self.port_pair_list}")
         logger.info(f"  Lane:                 {self.lane}")
@@ -291,7 +291,7 @@ class XenaTcvrTxInputEqOptimization:
 
         # Get logger
         logger = logging.getLogger(self.logger_name)
-        logger.info(f"=============== Tx Input Eq Test ===============")
+        logger.info(f"=============== Tcvr Tx Input Equalization Optimization Test ===============")
         logger.info(f"Test Config:")
         logger.info(f"  Port Pair:            {self.port_pair_list}")
         logger.info(f"  Lane:                 {self.lane}")
@@ -523,7 +523,7 @@ class XenaHostTxEqOptimization:
         self.report_filename = report_filename
 
         logger = logging.getLogger(self.logger_name)
-        logger.info(f"=============== Rx Output Eq Test ===============")
+        logger.info(f"=============== Host Tx Equalization Optimization Test ===============")
         logger.info(f"Test Config:")
         logger.info(f"  Port Pair:            {self.port_pair_list}")
         logger.info(f"  Lane:                 {self.lane}")
@@ -531,6 +531,10 @@ class XenaHostTxEqOptimization:
         logger.info(f"  Delay After EQ Write: {self.delay_after_eq_write} seconds")
         logger.info(f"  PRBS Polynomial:      {self.prbs_polynomial.name}")
         logger.info(f"  PRBS Duration:        {self.prbs_duration} seconds")
+        logger.info(f"  Target BER:           {self.target_ber}")
+        logger.info(f"  Preset Tap Values:    {self.preset_tap_values}")
+        logger.info(f"  Search Mode:          {self.search_mode}")
+        logger.info(f"  Search Taps:          {self.search_taps}")
     
     @property
     def port_pair_list(self):
