@@ -235,7 +235,7 @@ async def change_tx_tap_on_lanes(port: FreyaEdunPort, lanes: List[int], tap_inde
         serdes_index = lanes[idx] - 1
         current_sum = sum(abs(i) for i in tx_taps)
         if current_sum >= max_sum:
-            pass
+            continue
         else:
             _index = 0
         if tap_index == 0:
@@ -248,14 +248,14 @@ async def change_tx_tap_on_lanes(port: FreyaEdunPort, lanes: List[int], tap_inde
         if mode == "inc":
             if tap_index == -1 or tap_index == 1:
                 if tx_taps[_index] <= tx_taps_min[_index]:
-                    pass
+                    continue
                 else:
                     tx_taps[_index] -= 1
                     await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
                     results.append(lanes[idx])
             else:
                 if tx_taps[_index] >= tx_taps_max[_index]:
-                    pass
+                    continue
                 else:
                     tx_taps[_index] += 1
                     await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
@@ -263,20 +263,19 @@ async def change_tx_tap_on_lanes(port: FreyaEdunPort, lanes: List[int], tap_inde
         elif mode == "dec":
             if tap_index == -1 or tap_index == 1:
                 if tx_taps[_index] >= tx_taps_max[_index]:
-                    pass
+                    continue
                 else:
                     tx_taps[_index] += 1
                     await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
                     results.append(lanes[idx])
             else:
                 if tx_taps[_index] <= tx_taps_min[_index]:
-                    pass
+                    continue
                 else:
                     tx_taps[_index] -= 1
                     await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
                     results.append(lanes[idx])
-        else:
-            pass
+
     return results
 
     
@@ -353,11 +352,11 @@ async def read_prbs_bers(port: FreyaEdunPort, lanes: List[int], logger_name: str
     for i in range(len(resps)):
         _prbs_bits = resps[i].byte_count * 8
         _prbs_errors = resps[i].error_count
+        _prbs_ber = -1
         if _prbs_bits == 0:
             logger.info(f"  PRBS BER [{lanes[i]}]: N/A (No bits sent)")
-            results.append(-1)
-            continue
-        if _prbs_errors == 0:
+            _prbs_ber = -1
+        elif _prbs_errors == 0:
             _prbs_ber = 4.6/_prbs_bits
             # _prbs_ber = 0
             logger.info(f"  PRBS BER [{lanes[i]}]: < {'{0:.3e}'.format(_prbs_ber)}")
