@@ -904,7 +904,7 @@ class XenaHostTxEqOptimization:
     
     async def run(self):
         self.validate_lanes()
-        # await self.change_module_media()
+        await self.change_module_media()
         if self.search_mode == "heuristic":
             await self.heuristic_search(self.port_pair_list)
         elif self.search_mode == "exhaustive":
