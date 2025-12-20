@@ -621,6 +621,8 @@ class XenaHostTxEqOptimization:
 
         # heuristic search per port pair
         for tx_port_obj, rx_port_obj in zip(tx_port_obj_list, rx_port_obj_list):
+            txp = f"Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}"
+            rxp = f"Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}"
 
             cap_struct = await tx_port_obj.capabilities.get()
             num_txeq = cap_struct.tx_eq_tap_count
@@ -668,7 +670,7 @@ class XenaHostTxEqOptimization:
 
             # save result to report
             tx_tapss=[self.preset_tap_values] * len(self.lanes)
-            self.report_gen.record_data(port_name=f"Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}", lanes=self.lanes, tx_tapss=tx_tapss, prbs_bers=prbs_bers)
+            self.report_gen.record_data(tx_port=txp, rx_port=rxp, lanes=self.lanes, tx_tapss=tx_tapss, prbs_bers=prbs_bers)
 
             # stop prbs on a lane
             await stop_prbs_on_lanes(tx_port_obj, self.lanes, self.logger_name)
@@ -709,7 +711,7 @@ class XenaHostTxEqOptimization:
                     last_prbs_bers = update_last_prbs_bers_for_opt_lanes(last_prbs_bers, lanes_to_optimize, self.lanes)
                     
                     # save result to report
-                    self.report_gen.record_data(port_name=f"Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}", lanes=lanes_to_optimize, tx_tapss=tx_tapss, prbs_bers=prbs_bers)
+                    self.report_gen.record_data(tx_port=txp, rx_port=rxp, lanes=lanes_to_optimize, tx_tapss=tx_tapss, prbs_bers=prbs_bers)
 
                     # stop prbs on a lane
                     await stop_prbs_on_lanes(tx_port_obj, lanes_to_optimize, self.logger_name)
@@ -759,7 +761,9 @@ class XenaHostTxEqOptimization:
 
         # exhaustive search per port pair
         for tx_port_obj, rx_port_obj in zip(tx_port_obj_list, rx_port_obj_list):
-
+            txp = f"Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}"
+            rxp = f"Port {rx_port_obj.kind.module_id}/{rx_port_obj.kind.port_id}"
+            
             result_on_lanes = []
 
             cap_struct = await tx_port_obj.capabilities.get()
@@ -811,7 +815,7 @@ class XenaHostTxEqOptimization:
 
                     # save result to 
                     tx_tapss=[self.preset_tap_values] * len(self.lanes)
-                    self.report_gen.record_data(port_name=f"Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}", lanes=self.lanes, tx_tapss=tx_tapss, prbs_bers=prbs_bers)
+                    self.report_gen.record_data(tx_port=txp, rx_port=rxp, lanes=self.lanes, tx_tapss=tx_tapss, prbs_bers=prbs_bers)
                     for lane_index, tx_taps, prbs_ber in zip(self.lanes, tx_tapss, prbs_bers):
                         result_on_lanes.append({"lane": lane_index,"tx_eq": tx_taps, "prbs_ber": prbs_ber})
 
@@ -845,7 +849,7 @@ class XenaHostTxEqOptimization:
                             logger.info(f"Lane ({lane_index}) Equalizer: {tx_taps}, PRBS BER: {prbs_ber}")
 
                         # save result to report
-                        self.report_gen.record_data(port_name=f"Port {tx_port_obj.kind.module_id}/{tx_port_obj.kind.port_id}", lanes=self.lanes, tx_tapss=tx_tapss, prbs_bers=prbs_bers)
+                        self.report_gen.record_data(tx_port=txp, rx_port=rxp, lanes=self.lanes, tx_tapss=tx_tapss, prbs_bers=prbs_bers)
                         for lane_index, tx_taps, prbs_ber in zip(self.lanes, tx_tapss, prbs_bers):
                             result_on_lanes.append({"lane": lane_index,"tx_eq": tx_taps, "prbs_ber": prbs_ber})
 
@@ -875,6 +879,7 @@ class XenaHostTxEqOptimization:
                         await tx_port_obj.layer1.serdes[lane-1].medium.tx.native.set(tap_values=sorted_result[0]['tx_eq'])
                     else:
                         logger.info(f"Lane ({lane}): No result found")
+                return
             
 
             
