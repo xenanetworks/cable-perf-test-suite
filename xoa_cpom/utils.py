@@ -352,10 +352,10 @@ async def read_prbs_bers(port: FreyaEdunPort, lanes: List[int], logger_name: str
     for i in range(len(resps)):
         _prbs_bits = resps[i].byte_count * 8
         _prbs_errors = resps[i].error_count
-        _prbs_ber = -1
+        _prbs_ber = 1
         if _prbs_bits == 0:
             logger.info(f"  PRBS BER [{lanes[i]}]: N/A (No bits sent)")
-            _prbs_ber = -1
+            _prbs_ber = 1
         elif _prbs_errors == 0:
             _prbs_ber = 4.6/_prbs_bits
             # _prbs_ber = 0

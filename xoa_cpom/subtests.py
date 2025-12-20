@@ -789,15 +789,13 @@ class XenaHostTxEqOptimization:
 
             # heuristic search on host tx eq
             # Increment tap until PRBS BER gets worse
-            
+            await load_preset_tx_tap_values(tx_port_obj, self.lanes, self.preset_tap_values, self.logger_name)
+
+            # Wait for a certain duration to let the EQ settings take effect.
+            logger.info(f"Delay after EQ write: {self.delay_after_eq_write}s")
+            await asyncio.sleep(self.delay_after_eq_write)
+
             for _tap_index in self.search_taps:
-                # load preset tap values
-                await load_preset_tx_tap_values(tx_port_obj, self.lanes, self.preset_tap_values, self.logger_name)
-
-                # Wait for a certain duration to let the EQ settings take effect.
-                logger.info(f"Delay after EQ write: {self.delay_after_eq_write}s")
-                await asyncio.sleep(self.delay_after_eq_write)
-
                 # clear counters
                 logger.info(f"Clearing PRBS counters")
                 await rx_port_obj.layer1.pcs_fec.clear.set()
@@ -844,25 +842,39 @@ class XenaHostTxEqOptimization:
                     await tx_port_obj.layer1.pcs_fec.clear.set()
 
                     # start prbs on a lane
-                    await start_prbs_on_lanes(tx_port_obj, lanes_to_optimize, self.logger_name)
+                    await start_prbs_on_lanes(tx_port_obj, self.lanes, self.logger_name)
 
                     # measure duration
                     logger.info(f"Measuring PRBS for {self.prbs_duration}s")
                     await asyncio.sleep(self.prbs_duration)
 
                     # read current PRBS BER
-                    prbs_bers = await read_prbs_bers(port=rx_port_obj, lanes=lanes_to_optimize, logger_name=self.logger_name)
-                    tx_tapss = await read_tx_taps_on_lanes(tx_port_obj, lanes=lanes_to_optimize)
-                    for lane_index, tx_taps, prbs_ber in zip(lanes_to_optimize, tx_tapss, prbs_bers):
+                    prbs_bers = await read_prbs_bers(port=rx_port_obj, lanes=self.lanes, logger_name=self.logger_name)
+                    tx_tapss = await read_tx_taps_on_lanes(tx_port_obj, lanes=self.lanes)
+                    for lane_index, tx_taps, prbs_ber in zip(self.lanes, tx_tapss, prbs_bers):
                         logger.info(f"Lane ({lane_index}) Equalizer: {tx_taps}, PRBS BER: {prbs_ber}")
 
                     # save result to report
-                    self.report_gen.record_data(tx_port=txp, rx_port=rxp, lanes=lanes_to_optimize, tx_tapss=tx_tapss, prbs_bers=prbs_bers)
-                    for lane_index, tx_taps, prbs_ber in zip(lanes_to_optimize, tx_tapss, prbs_bers):
+                    self.report_gen.record_data(tx_port=txp, rx_port=rxp, lanes=self.lanes, tx_tapss=tx_tapss, prbs_bers=prbs_bers)
+                    for lane_index, tx_taps, prbs_ber in zip(self.lanes, tx_tapss, prbs_bers):
                         result_on_lanes.append({"lane": lane_index,"tx_eq": tx_taps, "prbs_ber": prbs_ber})
 
                     # stop prbs on a lane
-                    await stop_prbs_on_lanes(tx_port_obj, lanes_to_optimize, self.logger_name)
+                    await stop_prbs_on_lanes(tx_port_obj, self.lanes, self.logger_name)
+
+                for lane in self.lanes:
+                    lane_results = [res for res in result_on_lanes if res["lane"] == lane]
+                    if len(lane_results) > 0:
+                        sorted_result = sorted(lane_results, key = lambda x: x["prbs_ber"])
+                        for i in sorted_result:
+                            logger.info(f"Lane ({lane}) - Host Tx Eq: {i['tx_eq']}, PRBS BER: {i['prbs_ber']}")
+                        logger.info(f"Best result: Host Tx Eq: {sorted_result[0]['tx_eq']}, PRBS BER: {sorted_result[0]['prbs_ber']}")
+                        logger.info(f"Writing the best result to Host Tx Eq")
+                        await tx_port_obj.layer1.serdes[lane-1].medium.tx.native.set(tap_values=sorted_result[0]['tx_eq'])
+                    else:
+                        logger.info(f"Lane ({lane}): No result found")
+                logger.info(f"Delay after EQ write: {self.delay_after_eq_write}s")
+                await asyncio.sleep(self.delay_after_eq_write)
             
             # Generate report
             logger.info(f"Generatinging test report..")
