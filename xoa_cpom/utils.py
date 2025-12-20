@@ -30,12 +30,21 @@ async def read_prbs_ber(port: FreyaEdunPort, lane: int, logger_name: str) -> flo
     # read starting PRBS BER
     _prbs_ber = 0.0
     _serdes = lane - 1
-    resp = await port.layer1.serdes[_serdes].prbs.status.get()
+    
+    while True:
+        resp = await port.layer1.serdes[_serdes].prbs.status.get()
+        logger.debug(f"PRBS Lock Status: {[(lane, resp.lock.name.lower().replace('prbs', ''))]}")
+        if resp.lock == enums.PRBSLockStatus.PRBSON:
+            break
+        await asyncio.sleep(1)
     _prbs_bits = resp.byte_count * 8
     _prbs_errors = resp.error_count
+    if _prbs_bits == 0:
+        logger.info(f"  PRBS BER [{lane}]: N/A (No bits sent)")
+        _prbs_ber = 1
     if _prbs_errors == 0:
-        # _prbs_ber = 4.6/_prbs_bits
-        _prbs_ber = 0
+        _prbs_ber = 4.6/_prbs_bits
+        # _prbs_ber = 0
         logger.info(f"  PRBS BER [{lane}]: < {'{0:.3e}'.format(_prbs_ber)}")
     else:
         _prbs_ber = _prbs_errors/_prbs_bits
@@ -291,6 +300,7 @@ async def start_prbs_on_lanes(port: FreyaEdunPort, lanes: List[int], logger_name
     cmd_list = []
     for lane in lanes:
         _serdes_index = lane - 1
+        # await port.layer1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
         cmd_list.append(
             port.layer1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
         )
@@ -309,6 +319,7 @@ async def stop_prbs_on_lanes(port: FreyaEdunPort, lanes: List[int], logger_name:
     cmd_list = []
     for lane in lanes:
         _serdes_index = lane - 1
+        # await port.layer1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
         cmd_list.append(
             port.layer1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
         )
@@ -347,7 +358,14 @@ async def read_prbs_bers(port: FreyaEdunPort, lanes: List[int], logger_name: str
             port.layer1.serdes[_serdes_index].prbs.status.get()
         )
 
-    resps = await utils.apply(*cmd_list)
+    while True:
+        resps = await utils.apply(*cmd_list)
+        lock_status_lanes: List[enums.PRBSLockStatus] = [resp.lock for resp in resps]
+        logger.debug(f"PRBS Lock Status: {[(lane, lock_status.name.lower().replace('prbs', '')) for lane, lock_status in zip(lanes, lock_status_lanes)]}")
+        if all(lock_status == enums.PRBSLockStatus.PRBSON for lock_status in lock_status_lanes):
+            break
+        await asyncio.sleep(1)
+
     results = []
     for i in range(len(resps)):
         _prbs_bits = resps[i].byte_count * 8

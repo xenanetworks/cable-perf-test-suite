@@ -40,7 +40,6 @@ class HostTxEqPreset(BaseModel):
     post2: int
 
 class TcvrRxOutputEqTestConfig(BaseModel):
-    module_list: list[int]
     port_pair_list: list[PortPair]
     module_media: str
     port_speed: str
@@ -51,7 +50,6 @@ class TcvrRxOutputEqTestConfig(BaseModel):
     delay_after_eq_write: int
 
 class TcvrTxInputEqTestConfig(BaseModel):
-    module_list: list[int]
     port_pair_list: list[PortPair]
     module_media: str
     port_speed: str
@@ -62,7 +60,6 @@ class TcvrTxInputEqTestConfig(BaseModel):
     delay_after_eq_write: int
 
 class HostTxEqTestConfig(BaseModel):
-    module_list: list[int]
     port_pair_list: list[PortPair]
     module_media: str
     port_speed: str

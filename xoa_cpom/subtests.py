@@ -56,7 +56,10 @@ class XenaTcvrRxOutputEqOptimization:
     
     @property
     def module_list(self):
-        return self.test_config.module_list
+        results = set()
+        for port_pair in self.test_config.port_pair_list:
+            results.add(int(port_pair.tx.split("/")[0]))
+        return list(results)
     
     @property
     def port_speed(self):
@@ -313,7 +316,10 @@ class XenaTcvrTxInputEqOptimization:
     
     @property
     def module_list(self):
-        return self.test_config.module_list
+        results = set()
+        for port_pair in self.test_config.port_pair_list:
+            results.add(int(port_pair.tx.split("/")[0]))
+        return list(results)
     
     @property
     def port_speed(self):
@@ -548,7 +554,10 @@ class XenaHostTxEqOptimization:
     
     @property
     def module_list(self):
-        return self.test_config.module_list
+        results = set()
+        for port_pair in self.test_config.port_pair_list:
+            results.add(int(port_pair.tx.split("/")[0]))
+        return list(results)
     
     @property
     def port_speed(self):
@@ -645,9 +654,6 @@ class XenaHostTxEqOptimization:
             await tx_port_obj.layer1.prbs_config.set(prbs_inserted_type=enums.PRBSInsertedType.PHY_LINE, polynomial=polynomial, invert=enums.PRBSInvertState.NON_INVERTED, statistics_mode=enums.PRBSStatisticsMode.ACCUMULATIVE)
             await rx_port_obj.layer1.prbs_config.set(prbs_inserted_type=enums.PRBSInsertedType.PHY_LINE, polynomial=polynomial, invert=enums.PRBSInvertState.NON_INVERTED, statistics_mode=enums.PRBSStatisticsMode.ACCUMULATIVE)
 
-            # start prbs on a lane
-            await start_prbs_on_lanes(tx_port_obj, self.lanes, self.logger_name)
-
             # load preset tap values
             await load_preset_tx_tap_values(tx_port_obj, self.lanes, self.preset_tap_values, self.logger_name)
 
@@ -658,7 +664,9 @@ class XenaHostTxEqOptimization:
             # clear counters
             logger.info(f"Clearing PRBS counters")
             await rx_port_obj.layer1.pcs_fec.clear.set()
-            await tx_port_obj.layer1.pcs_fec.clear.set()
+
+            # start prbs on a lane
+            await start_prbs_on_lanes(tx_port_obj, self.lanes, self.logger_name)
 
             # measure duration
             logger.info(f"Measuring PRBS for {self.prbs_duration}s")
@@ -674,6 +682,7 @@ class XenaHostTxEqOptimization:
 
             # stop prbs on a lane
             await stop_prbs_on_lanes(tx_port_obj, self.lanes, self.logger_name)
+            await asyncio.sleep(1)
 
             # heuristic search on host tx eq
             # Increment tap until PRBS BER gets worse
@@ -692,7 +701,6 @@ class XenaHostTxEqOptimization:
                     # clear counters
                     logger.info(f"Clearing PRBS counters")
                     await rx_port_obj.layer1.pcs_fec.clear.set()
-                    await tx_port_obj.layer1.pcs_fec.clear.set()
 
                     # start prbs on a lane
                     await start_prbs_on_lanes(tx_port_obj, lanes_to_optimize, self.logger_name)
@@ -703,7 +711,9 @@ class XenaHostTxEqOptimization:
 
                     # read current PRBS BER
                     prbs_bers = await read_prbs_bers(port=rx_port_obj, lanes=lanes_to_optimize, logger_name=self.logger_name)
+                    await asyncio.sleep(1)
                     tx_tapss = await read_tx_taps_on_lanes(tx_port_obj, lanes_to_optimize)
+                    await asyncio.sleep(1)
                     for lane_index, tx_taps, prbs_ber in zip(lanes_to_optimize, tx_tapss, prbs_bers):
                         logger.info(f"Lane ({lane_index}) Equalizer: {tx_taps}, PRBS BER: {prbs_ber}")
 
@@ -715,6 +725,7 @@ class XenaHostTxEqOptimization:
 
                     # stop prbs on a lane
                     await stop_prbs_on_lanes(tx_port_obj, lanes_to_optimize, self.logger_name)
+                    await asyncio.sleep(1)
 
                     # check prbs ber improvement
                     for prbs_ber, last_prbs_ber in zip(prbs_bers, last_prbs_bers):
@@ -799,7 +810,7 @@ class XenaHostTxEqOptimization:
                 # clear counters
                 logger.info(f"Clearing PRBS counters")
                 await rx_port_obj.layer1.pcs_fec.clear.set()
-                await tx_port_obj.layer1.pcs_fec.clear.set()
+                await asyncio.sleep(1)
 
                 # start prbs on a lane
                 await start_prbs_on_lanes(tx_port_obj, self.lanes, self.logger_name)
@@ -810,15 +821,18 @@ class XenaHostTxEqOptimization:
                 
                 # read the previous prbs
                 prbs_bers = await read_prbs_bers(port=rx_port_obj, lanes=self.lanes, logger_name=self.logger_name)
-
-                # save result to 
+                await asyncio.sleep(1)
                 tx_tapss=[self.preset_tap_values] * len(self.lanes)
+                for lane_index, tx_taps, prbs_ber in zip(self.lanes, tx_tapss, prbs_bers):
+                    logger.info(f"Lane ({lane_index}) Equalizer: {tx_taps}, PRBS BER: {prbs_ber}")
+
                 self.report_gen.record_data(tx_port=txp, rx_port=rxp, lanes=self.lanes, tx_tapss=tx_tapss, prbs_bers=prbs_bers)
                 for lane_index, tx_taps, prbs_ber in zip(self.lanes, tx_tapss, prbs_bers):
                     result_on_lanes.append({"lane": lane_index,"tx_eq": tx_taps, "prbs_ber": prbs_ber})
 
                 # stop prbs on a lane
                 await stop_prbs_on_lanes(tx_port_obj, self.lanes, self.logger_name)
+                await asyncio.sleep(1)
 
                 logger.info(f"Increment c({_tap_index})")
                 keep_optimizing = True
@@ -827,19 +841,19 @@ class XenaHostTxEqOptimization:
                     lanes_to_optimize = await change_tx_tap_on_lanes(tx_port_obj, self.lanes, _tap_index, num_txeq_pre, num_txeq_post, 
                     tx_taps_max, tx_taps_min, "inc")
 
-                    if len(lanes_to_optimize) == 0:
-                        logger.info(f"All lanes reached maximum value for tap c({_tap_index})")
-                        keep_optimizing = False
-                        continue
-                    
                     # Wait for a certain duration to let the EQ settings take effect.
                     logger.info(f"Delay after EQ write: {self.delay_after_eq_write}s")
                     await asyncio.sleep(self.delay_after_eq_write)
 
+                    if len(lanes_to_optimize) == 0:
+                        logger.info(f"All lanes reached maximum value for tap c({_tap_index})")
+                        keep_optimizing = False
+                        continue
+
                     # clear counters
                     logger.info(f"Clearing PRBS counters")
                     await rx_port_obj.layer1.pcs_fec.clear.set()
-                    await tx_port_obj.layer1.pcs_fec.clear.set()
+                    await asyncio.sleep(1)
 
                     # start prbs on a lane
                     await start_prbs_on_lanes(tx_port_obj, self.lanes, self.logger_name)
@@ -850,7 +864,9 @@ class XenaHostTxEqOptimization:
 
                     # read current PRBS BER
                     prbs_bers = await read_prbs_bers(port=rx_port_obj, lanes=self.lanes, logger_name=self.logger_name)
+                    await asyncio.sleep(1)
                     tx_tapss = await read_tx_taps_on_lanes(tx_port_obj, lanes=self.lanes)
+                    await asyncio.sleep(1)
                     for lane_index, tx_taps, prbs_ber in zip(self.lanes, tx_tapss, prbs_bers):
                         logger.info(f"Lane ({lane_index}) Equalizer: {tx_taps}, PRBS BER: {prbs_ber}")
 
@@ -861,6 +877,7 @@ class XenaHostTxEqOptimization:
 
                     # stop prbs on a lane
                     await stop_prbs_on_lanes(tx_port_obj, self.lanes, self.logger_name)
+                    await asyncio.sleep(1)
 
                 for lane in self.lanes:
                     lane_results = [res for res in result_on_lanes if res["lane"] == lane]
@@ -882,6 +899,7 @@ class XenaHostTxEqOptimization:
 
             # stop prbs
             await stop_prbs_on_lanes(tx_port_obj, self.lanes, self.logger_name)
+            await asyncio.sleep(1)
 
             # find the best per lane
             logger.info(f"Final sorted results:")
