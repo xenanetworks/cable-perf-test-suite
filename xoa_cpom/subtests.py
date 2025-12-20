@@ -822,7 +822,7 @@ class XenaHostTxEqOptimization:
                 # read the previous prbs
                 prbs_bers = await read_prbs_bers(port=rx_port_obj, lanes=self.lanes, logger_name=self.logger_name)
                 await asyncio.sleep(1)
-                tx_tapss=[self.preset_tap_values] * len(self.lanes)
+                tx_tapss = await read_tx_taps_on_lanes(tx_port_obj, lanes=self.lanes)
                 for lane_index, tx_taps, prbs_ber in zip(self.lanes, tx_tapss, prbs_bers):
                     logger.info(f"Lane ({lane_index}) Equalizer: {tx_taps}, PRBS BER: {prbs_ber}")
 
