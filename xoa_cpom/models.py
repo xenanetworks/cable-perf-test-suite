@@ -66,7 +66,7 @@ class HostTxEqTestConfig(BaseModel):
     port_pair_list: list[PortPair]
     module_media: str
     port_speed: str
-    lane: int
+    lanes: List[int]
     delay_after_reset: int
     prbs_config: PRBSTestConfig
     delay_after_eq_write: int

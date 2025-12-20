@@ -114,24 +114,26 @@ class HostTxEqTestReportGenerator:
         self.rec["PRBS BER"] = 0.0
         self.fieldnames = ["Time", "Lane"] + [f"Pre{self.num_txtaps_pre-i}" for i in range(self.num_txtaps_pre)] + ["Main"] + [f"Post{i+1}" for i in range(self.num_txtaps_post)] + ["PRBS BER"]
         
-    def record_data(self, port_name: str, lane: int, eqs: List[int], prbs_ber: float) -> None:
-        if len(eqs) != self.num_tx_taps:
-            raise ValueError(f"Length of eqs {len(eqs)} does not match num_tx_taps {self.num_tx_taps}")
+    def record_data(self, port_name: str, lanes: List[int], tx_tapss: List[List[int]], prbs_bers: List[float]) -> None:
+        for tx_taps in tx_tapss:
+            if len(tx_taps) != self.num_tx_taps:
+                raise ValueError(f"Length of eqs {len(tx_taps)} does not match num_tx_taps {self.num_tx_taps}")
         
-        time_str = time.strftime("%H:%M:%S", time.localtime())
-        if port_name not in self.database:
-            self.database[port_name] = []
-        self.rec = dict()
-        self.rec["Time"] = time_str
-        self.rec["Lane"] = lane
-        for i in range(self.num_txtaps_pre):
-            self.rec[f"Pre{self.num_txtaps_pre - i}"] = eqs[i]
-        self.rec["Main"] = eqs[self.num_txtaps_pre]
-        for i in range(self.num_txtaps_post):
-            self.rec[f"Post{i+1}"] = eqs[self.num_txtaps_pre + 1 + i]
-        self.rec["PRBS BER"] = '{:.2e}'.format(abs(prbs_ber))
+        for lane, tx_taps, prbs_ber in zip(lanes, tx_tapss, prbs_bers):
+            time_str = time.strftime("%H:%M:%S", time.localtime())
+            if port_name not in self.database:
+                self.database[port_name] = []
+            self.rec = dict()
+            self.rec["Time"] = time_str
+            self.rec["Lane"] = lane
+            for i in range(self.num_txtaps_pre):
+                self.rec[f"Pre{self.num_txtaps_pre - i}"] = tx_taps[i]
+            self.rec["Main"] = tx_taps[self.num_txtaps_pre]
+            for i in range(self.num_txtaps_post):
+                self.rec[f"Post{i+1}"] = tx_taps[self.num_txtaps_pre + 1 + i]
+            self.rec["PRBS BER"] = '{:.2e}'.format(abs(prbs_ber))
 
-        self.database[port_name].append(self.rec)
+            self.database[port_name].append(self.rec)
             
     
     def generate_report(self, filename: str) -> None:

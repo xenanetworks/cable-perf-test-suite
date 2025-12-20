@@ -3,7 +3,7 @@
 # *************************************
 
 import asyncio
-from xoa_driver import testers, modules, ports, enums
+from xoa_driver import testers, modules, ports, enums, utils
 from xoa_driver.misc import Hex
 from xoa_driver.hlfuncs import mgmt
 from .enums import *
@@ -162,7 +162,7 @@ async def change_module_media(tester_obj: testers.L23Tester, module_list: List[i
 # description: Get the TX tap value from the tx_taps list. 
 # -1 means pre1, -2 means pre2, 0 means main, 1 means post1, 2 means post2
 # *************************************************************************************
-async def get_one_tx_tap_value(port: FreyaEdunPort, serdes_index: int, tap_index: int, num_txeq_pre: int, num_txeq_post: int, tx_taps_max: List[int], tx_taps_min: List[int]) -> Tuple[int, int, int]:
+async def read_single_tx_tap_value(port: FreyaEdunPort, serdes_index: int, tap_index: int, num_txeq_pre: int, num_txeq_post: int, tx_taps_max: List[int], tx_taps_min: List[int]) -> Tuple[int, int, int]:
     """Get one Tx tap value from the port.
     -1 means pre1, -2 means pre2, 0 means main, 1 means post1, 2 means post2
 
@@ -186,16 +186,25 @@ async def get_one_tx_tap_value(port: FreyaEdunPort, serdes_index: int, tap_index
     return (tx_taps[_index], tx_taps_max[_index], tx_taps_min[_index])
 
 
-async def get_all_tx_tap_values(port: FreyaEdunPort, serdes_index: int,) -> List[int]:
+async def read_tx_taps_on_lanes(port: FreyaEdunPort, lanes: List[int]) -> List[List[int]]:
     """Get TX tap value from the tx_taps list.
     -1 means pre1, -2 means pre2, 0 means main, 1 means post1, 2 means post2
     """
-    resp = await port.layer1.serdes[serdes_index].medium.tx.native.get()
-    tx_taps = resp.tap_values
+    cmd_list = []
+    for lane in lanes:
+        _serdes_index = lane - 1
+        cmd_list.append(
+            port.layer1.serdes[_serdes_index].medium.tx.native.get()
+        )
+
+    resps = await utils.apply(*cmd_list)
+    tx_taps = []
+    for resp in resps:
+        tx_taps.append(resp.tap_values)
     return tx_taps
 
 
-async def change_tx_tap_value(port: FreyaEdunPort, serdes_index: int, tap_index: int, num_txeq_pre: int, num_txeq_post: int, tx_taps_max: List[int], tx_taps_min: List[int], mode: str) -> int:
+async def change_tx_tap_on_lanes(port: FreyaEdunPort, lanes: List[int], tap_index: int, num_txeq_pre: int, num_txeq_post: int, tx_taps_max: List[int], tx_taps_min: List[int], mode: str) -> List[int]:
     """Increase one Tx tap value by step.
     -1 means pre1, -2 means pre2, 0 means main, 1 means post1, 2 means post2
     """
@@ -209,14 +218,26 @@ async def change_tx_tap_value(port: FreyaEdunPort, serdes_index: int, tap_index:
         max_sum = 87
     elif isinstance(port, ports.Z1600EdunPort):
         max_sum = 168
+
+    cmd_list = []
+    for lane in lanes:
+        _serdes_index = lane - 1
+        cmd_list.append(
+            port.layer1.serdes[_serdes_index].medium.tx.native.get()
+        )
+    resps = await utils.apply(*cmd_list)
     
-    resp = await port.layer1.serdes[serdes_index].medium.tx.native.get()
-    tx_taps = resp.tap_values
-    current_sum = sum(abs(i) for i in tx_taps)
-    if current_sum >= max_sum:
-        return 0
-    else:
-        _index = 0
+    tx_taps_list = [resp.tap_values for resp in resps]
+
+    results = []
+    for tx_taps in tx_taps_list:
+        idx = tx_taps_list.index(tx_taps)
+        serdes_index = lanes[idx] - 1
+        current_sum = sum(abs(i) for i in tx_taps)
+        if current_sum >= max_sum:
+            pass
+        else:
+            _index = 0
         if tap_index == 0:
             _index = num_txeq_pre
         elif tap_index < 0:
@@ -227,35 +248,145 @@ async def change_tx_tap_value(port: FreyaEdunPort, serdes_index: int, tap_index:
         if mode == "inc":
             if tap_index == -1 or tap_index == 1:
                 if tx_taps[_index] <= tx_taps_min[_index]:
-                    return 0
+                    pass
                 else:
                     tx_taps[_index] -= 1
                     await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
-                    return 1
+                    results.append(lanes[idx])
             else:
                 if tx_taps[_index] >= tx_taps_max[_index]:
-                    return 0
+                    pass
                 else:
                     tx_taps[_index] += 1
                     await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
-                    return 1
+                    results.append(lanes[idx])
         elif mode == "dec":
             if tap_index == -1 or tap_index == 1:
                 if tx_taps[_index] >= tx_taps_max[_index]:
-                    return 0
+                    pass
                 else:
                     tx_taps[_index] += 1
                     await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
-                    return 1
+                    results.append(lanes[idx])
             else:
                 if tx_taps[_index] <= tx_taps_min[_index]:
-                    return 0
+                    pass
                 else:
                     tx_taps[_index] -= 1
                     await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
-                    return 1
+                    results.append(lanes[idx])
         else:
-            return 0
+            pass
+    return results
 
     
+async def start_prbs_on_lanes(port: FreyaEdunPort, lanes: List[int], logger_name: str) -> None:
+    """Start PRBS on a specified lane
+    """
+    # Get logger
+    logger = logging.getLogger(logger_name)
 
+    # start prbs on a lane
+    logger.info(f"Starting PRBS on Port {port.kind.module_id}/{port.kind.port_id} on Lanes {lanes}")
+
+    cmd_list = []
+    for lane in lanes:
+        _serdes_index = lane - 1
+        cmd_list.append(
+            port.layer1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
+        )
+    await utils.apply(*cmd_list)
+
+
+async def stop_prbs_on_lanes(port: FreyaEdunPort, lanes: List[int], logger_name: str) -> None:
+    """Stop PRBS on a specified lane
+    """
+    # Get logger
+    logger = logging.getLogger(logger_name)
+
+    # stop prbs on a lane
+    logger.info(f"Stopping PRBS on Port {port.kind.module_id}/{port.kind.port_id} on Lanes {lanes}")
+
+    cmd_list = []
+    for lane in lanes:
+        _serdes_index = lane - 1
+        cmd_list.append(
+            port.layer1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
+        )
+    await utils.apply(*cmd_list)
+
+async def load_preset_tx_tap_values(port: FreyaEdunPort, lanes: List[int], preset_tap_values: List[int], logger_name: str) -> None:
+    """Load preset TX tap values to the port
+    """
+    # Get logger
+    logger = logging.getLogger(logger_name)
+
+    # stop prbs on a lane
+    logger.info(f"Loading preset TX tap values {preset_tap_values} on Port {port.kind.module_id}/{port.kind.port_id} on Lane {lanes}")
+
+    cmd_list = []
+    for lane in lanes:
+        _serdes_index = lane - 1
+        cmd_list.append(
+            port.layer1.serdes[_serdes_index].medium.tx.native.set(tap_values=preset_tap_values)
+        )
+    await utils.apply(*cmd_list)
+
+async def read_prbs_bers(port: FreyaEdunPort, lanes: List[int], logger_name: str) -> List[float]:
+    """Read PRBS BER from a specified lane. If zero errored bits, the BER is calculated as 4.6/prbs_bits for 99% confidence level.
+    Read more in https://www.lightwaveonline.com/home/article/16647704/explaining-those-ber-testing-mysteries
+    """
+    # Get logger
+    logger = logging.getLogger(logger_name)
+
+    _prbs_ber = 0.0
+    
+    cmd_list = []
+    for lane in lanes:
+        _serdes_index = lane - 1
+        cmd_list.append(
+            port.layer1.serdes[_serdes_index].prbs.status.get()
+        )
+
+    resps = await utils.apply(*cmd_list)
+    results = []
+    for i in range(len(resps)):
+        _prbs_bits = resps[i].byte_count * 8
+        _prbs_errors = resps[i].error_count
+        if _prbs_bits == 0:
+            logger.info(f"  PRBS BER [{lanes[i]}]: N/A (No bits sent)")
+            results.append(-1)
+            continue
+        if _prbs_errors == 0:
+            _prbs_ber = 4.6/_prbs_bits
+            # _prbs_ber = 0
+            logger.info(f"  PRBS BER [{lanes[i]}]: < {'{0:.3e}'.format(_prbs_ber)}")
+        else:
+            _prbs_ber = _prbs_errors/_prbs_bits
+            logger.info(f"  PRBS BER [{lanes[i]}]: {'{0:.3e}'.format(_prbs_ber)}")
+        results.append(_prbs_ber)
+    
+    return results
+
+
+def get_lanes_to_optimize(prbs_bers: List[float], target_ber: float) -> List[int]:
+    """Get lanes that need to be optimized based on current PRBS BER and target BER
+    """
+    lanes_to_optimize = []
+    for prbs_ber in prbs_bers:
+        if prbs_ber > target_ber:
+            lanes_to_optimize.append(prbs_bers.index(prbs_ber))
+    return lanes_to_optimize
+
+def update_last_prbs_bers_for_opt_lanes(last_prbs_bers: List[float], lanes_to_optimize: List[int], original_lanes: List[int]) -> List[float]:
+    """Update last PRBS BERs for the lanes that have been optimized
+    """
+    # difference between original_lanes and lanes_to_optimize
+    for lane in original_lanes:
+        if lane not in lanes_to_optimize:
+            idx = original_lanes.index(lane)
+            last_prbs_bers[idx] = -1
+    # remove all -1 from last_prbs_bers
+    while -1 in last_prbs_bers:
+        last_prbs_bers.remove(-1)
+    return last_prbs_bers
