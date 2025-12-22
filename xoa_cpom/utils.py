@@ -46,10 +46,10 @@ async def test_done(port: FreyaEdunPort, lane: int, current_ber: float, target_b
     await port.layer1.serdes[_serdes].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
 
 # *************************************************************************************
-# func: portid_to_portobj
+# func: convert_port_ids_to_objects
 # description: Get the port objects from the port pair list
 # *************************************************************************************
-def portid_to_portobj(tester_obj: testers.L23Tester, port_pair_list: List[Dict[str, str]]) -> List[Dict[str, FreyaEdunPort]]:
+def convert_port_ids_to_objects(tester_obj: testers.L23Tester, port_pair_list: List[Dict[str, str]]) -> List[Dict[str, FreyaEdunPort]]:
     """Get the port objects from the port pair list
 
     :param tester_obj: The tester object
@@ -61,35 +61,9 @@ def portid_to_portobj(tester_obj: testers.L23Tester, port_pair_list: List[Dict[s
     """
     port_obj_list: List[Dict[str, FreyaEdunPort]] = []
     for port_pair in port_pair_list:
-        _txport,_rxport = mgmt.get_ports(tester_obj, [port_pair["tx"], port_pair["rx"]])
+        _txport,_rxport = mgmt.obtain_ports_by_ids(tester_obj, [port_pair["tx"], port_pair["rx"]])
         port_obj_list.append({"tx": _txport, "rx": _rxport}) # type: ignore
     return port_obj_list
-
-
-# # *************************************************************************************
-# # func: reserve_ports_in_list
-# # description: Reserve ports in the port object list
-# # *************************************************************************************
-# async def reserve_reset_ports_in_list(tester_obj: testers.L23Tester, port_obj_list: List[FreyaEdunPort]) -> None:
-#     """Reserve ports in the port object list
-#     """
-#     for _port in port_obj_list:
-#         _module_id = _port.kind.module_id
-#         _module = tester_obj.modules.obtain(_module_id)
-#         await mgmt.release_modules(modules=[_module], should_release_ports=False)
-#         await mgmt.reserve_ports(ports=[_port], reset=True)
-#     await asyncio.sleep(1.0)
-
-# # *************************************************************************************
-# # func: release_ports_in_list
-# # description: Release ports in the port object list
-# # *************************************************************************************
-# async def release_ports_in_list(port_obj_list: List[FreyaEdunPort]) -> None:
-#     """Release ports in the port object list
-#     """
-#     for _port in port_obj_list:
-#         await mgmt.release_ports(ports=[_port])
-#     await asyncio.sleep(1.0)
 
 
 # *************************************************************************************
@@ -110,14 +84,14 @@ async def config_modules(tester_obj: testers.L23Tester, module_str_configs: List
     module_configs =[]
     for module_config_str in module_str_configs:
         module_id, module_media_str, port_config_str = module_config_str
-        module_obj = mgmt.get_modules(tester_obj, [int(module_id)])[0]
+        module_obj = mgmt.obtain_modules_by_ids(tester_obj, [module_id])[0]
         module_media = enums.MediaConfigurationType[module_media_str]
         port_count = int(port_config_str.split('x')[0])
         port_speed = int(port_config_str.split('x')[1].replace('G','')) * 1000  # in Mbps
         
         logger.info(f"Configuring test module {module_id} to {module_media_str} {port_config_str}")
         module_configs.append( (module_obj, module_media, port_count, port_speed) )
-    await mgmt.config_modules(module_configs=module_configs)
+    await mgmt.set_module_configs(module_configs=module_configs)
     await asyncio.sleep(1.0)
 
 

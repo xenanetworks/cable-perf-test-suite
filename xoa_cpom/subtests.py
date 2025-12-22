@@ -155,7 +155,7 @@ class XenaTcvrRxOutputEqOptimization:
         logger.info(f"Exhaustive search started")
 
         # Get port pair objects list from port pair list
-        port_pair_obj_list = portid_to_portobj(self.tester_obj, port_pair_list)            
+        port_pair_obj_list = convert_port_ids_to_objects(self.tester_obj, port_pair_list)            
 
         # exhaustive search of all cursor combinations
         for port_pair_obj in port_pair_obj_list:
@@ -382,7 +382,7 @@ class XenaTcvrTxInputEqOptimization:
         logger.info(f"Exhaustive search started")
 
         # Get port pair objects list from port pair list
-        port_pair_obj_list = portid_to_portobj(self.tester_obj, port_pair_list) 
+        port_pair_obj_list = convert_port_ids_to_objects(self.tester_obj, port_pair_list) 
 
         # exhaustive search of all cursor combinations
         for port_pair_obj in port_pair_obj_list:
@@ -610,7 +610,7 @@ class XenaHostTxEqOptimization:
         logger.info(f"Heuristic search started")
 
         # Get port pair objects list from port pair list
-        port_pair_obj_list = portid_to_portobj(self.tester_obj, port_pair_list)  
+        port_pair_obj_list = convert_port_ids_to_objects(self.tester_obj, port_pair_list)  
 
         # heuristic search per port pair
         for port_pair_obj in port_pair_obj_list:
@@ -709,7 +709,7 @@ class XenaHostTxEqOptimization:
         logger.info(f"Exhaustive search started")
 
         # Get port pair objects list from port pair list
-        port_pair_obj_list = portid_to_portobj(self.tester_obj, port_pair_list)  
+        port_pair_obj_list = convert_port_ids_to_objects(self.tester_obj, port_pair_list)  
 
         # heuristic search per port pair
         for port_pair_obj in port_pair_obj_list:
