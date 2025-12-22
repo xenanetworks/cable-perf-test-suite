@@ -68,9 +68,9 @@ class HostTxEqTestConfig(BaseModel):
     prbs_config: PRBSTestConfig
     delay_after_eq_write: int
     target_ber: float
-    preset_tap_values: HostTxEqPreset
-    search_mode: str  # "heuristic" or "exhaustive"
-    search_taps: List[int]
+    start_txeq: HostTxEqPreset
+    optimize_mode: str  # "heuristic" or "exhaustive"
+    optimize_txeq_ids: List[int]
 
 class CablePerformanceTestConfig(BaseModel):
     chassis_ip: str

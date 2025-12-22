@@ -4,21 +4,36 @@
 
 import time
 import csv
-from typing import List
+import os
+from typing import List, Dict, Any
+import logging
+
+# *************************************************************************************
+# func: create_report_dir
+# description: Create report directory
+# *************************************************************************************
+async def create_report_dir() -> str:
+    datetime = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+    path = "xena_cpom_" + datetime
+    if not os.path.exists(path):
+        os.makedirs(path)
+    return path
 
 class TcvrRxOutputEqTestReportGenerator:
-    def __init__(self):
-        self.name = "Tcvr Rx Output EQ Test"
-        self.chassis = "10.10.10.10"
-        self.fieldnames = ["Time", "Lane", "Amplitude", "PreCursor", "PostCursor", "PRBS BER"]
-        self.datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        self.database = {}
+    def __init__(self, logger_name: str, name: str = "Tcvr Rx Output EQ Test", chassis: str = "10.10.10.10"):
+        self.logger = logging.getLogger(logger_name)
+        self.name = name
+        self.chassis = chassis
+        self.__fieldnames = ["Time", "Lane", "Amplitude", "PreCursor", "PostCursor", "PRBS BER"]
+        self.__create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        self.__database = {}
 
     def record_data(self, port_name: str, lane: int, amplitude: int, precursor: int, postcursor:int, prbs_ber: float) -> None:
+        self.logger.info(f"Lane ({lane}) Amplitude: {amplitude}, PreCursor: {precursor}, PostCursor: {postcursor}, PRBS BER: {prbs_ber}")
         time_str = time.strftime("%H:%M:%S", time.localtime())
-        if port_name not in self.database:
-            self.database[port_name] = []
-        self.database[port_name].append({
+        if port_name not in self.__database:
+            self.__database[port_name] = []
+        self.__database[port_name].append({
                 "Time": time_str,
                 "Lane": lane,
                 "Amplitude": amplitude,
@@ -33,16 +48,16 @@ class TcvrRxOutputEqTestReportGenerator:
             ["*******************************************"],
             ["Test:", self.name],
             ["Chassis:", self.chassis],
-            ["Datetime:", self.datetime],
+            ["Datetime:", self.__create_time],
             []
         ]
         with open(filename, 'a', newline='') as csvfile:
             writer = csv.writer(csvfile)
             for line in headers:
                 writer.writerow(line)
-            for key, value in self.database.items():
+            for key, value in self.__database.items():
                 writer.writerow([key])
-                dict_writer = csv.DictWriter(csvfile, fieldnames=self.fieldnames)
+                dict_writer = csv.DictWriter(csvfile, fieldnames=self.__fieldnames)
                 dict_writer.writeheader()
                 for data in value:
                     dict_writer.writerow(data)
@@ -50,21 +65,23 @@ class TcvrRxOutputEqTestReportGenerator:
 
 
 class TcvrTxInputEqTestReportGenerator:
-    def __init__(self):
-        self.name = "Tcvr Tx Input EQ Test"
-        self.chassis = "10.10.10.10"
-        self.fieldnames = ["Time", "Lane", "Tx EQ", "PRBS BER"]
-        self.datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        self.database = {}
+    def __init__(self, logger_name: str, name: str = "Tcvr Rx Output EQ Test", chassis: str = "10.10.10.10"):
+        self.logger = logging.getLogger(logger_name)
+        self.name = name
+        self.chassis =chassis
+        self.__fieldnames = ["Time", "Lane", "Tx EQ", "PRBS BER"]
+        self.__create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        self.__database = {}
 
-    def record_data(self, port_name: str, lane: int, eq: int, prbs_ber: float) -> None:
+    def record_data(self, port_name: str, lane: int, eq_value: int, prbs_ber: float) -> None:
+        self.logger.info(f"Lane ({lane}) Equalizer: {eq_value}, PRBS BER: {prbs_ber}")
         time_str = time.strftime("%H:%M:%S", time.localtime())
-        if port_name not in self.database:
-            self.database[port_name] = []
-        self.database[port_name].append({
+        if port_name not in self.__database:
+            self.__database[port_name] = []
+        self.__database[port_name].append({
                 "Time": time_str,
                 "Lane": lane,
-                "Tx EQ": eq,
+                "Tx EQ": eq_value,
                 "PRBS BER": '{:.2e}'.format(abs(prbs_ber))
             })
             
@@ -74,16 +91,16 @@ class TcvrTxInputEqTestReportGenerator:
             ["*******************************************"],
             ["Test:", self.name],
             ["Chassis:", self.chassis],
-            ["Datetime:", self.datetime],
+            ["Datetime:", self.__create_time],
             []
         ]
         with open(filename, 'a', newline='') as csvfile:
             writer = csv.writer(csvfile)
             for line in headers:
                 writer.writerow(line)
-            for key, value in self.database.items():
+            for key, value in self.__database.items():
                 writer.writerow([key])
-                dict_writer = csv.DictWriter(csvfile, fieldnames=self.fieldnames)
+                dict_writer = csv.DictWriter(csvfile, fieldnames=self.__fieldnames)
                 dict_writer.writeheader()
                 for data in value:
                     dict_writer.writerow(data)
@@ -91,17 +108,19 @@ class TcvrTxInputEqTestReportGenerator:
 
 
 class HostTxEqTestReportGenerator:
-    def __init__(self):
-        self.name = "Host Tx EQ Test"
-        self.chassis = "10.10.10.10"
-        self.fieldnames = ["Time", "Lane", "Equalizers", "PRBS BER"]
-        self.datetime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        self.database = {}
-        self.num_tx_taps = 0
-        self.num_txtaps_pre = 0
-        self.num_txtaps_post = 0
+    def __init__(self, logger_name: str, name: str = "Host Tx EQ Test", chassis: str = "10.10.10.10"):
+        self.logger = logging.getLogger(logger_name)
+        self.name = name
+        self.chassis = chassis
+        self.__fieldnames = ["Time", "Lane", "Equalizers", "PRBS BER"]
+        self.__created_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        self.__database = {}
 
-    def setup_record_structure(self) -> None:
+    def setup(self, num_tx_taps: int, num_txtaps_pre: int, num_txtaps_post: int) -> None:
+        self.num_tx_taps = num_tx_taps
+        self.num_txtaps_pre = num_txtaps_pre
+        self.num_txtaps_post = num_txtaps_post
+
         # Generate dict with "pre", "post" keys for tx taps depending on the num_txtaps_pre and num_txtaps_post
         self.rec = dict()
         self.rec["Time"] = ""
@@ -112,29 +131,34 @@ class HostTxEqTestReportGenerator:
         for i in range(self.num_txtaps_post):
             self.rec[f"Post{i+1}"] = 0
         self.rec["PRBS BER"] = 0.0
-        self.fieldnames = ["Time", "Lane"] + [f"Pre{self.num_txtaps_pre-i}" for i in range(self.num_txtaps_pre)] + ["Main"] + [f"Post{i+1}" for i in range(self.num_txtaps_post)] + ["PRBS BER"]
+
+        self.__fieldnames = ["Time", "Lane"] + [f"Pre{self.num_txtaps_pre-i}" for i in range(self.num_txtaps_pre)] + ["Main"] + [f"Post{i+1}" for i in range(self.num_txtaps_post)] + ["PRBS BER"]
         
-    def record_data(self, tx_port: str, rx_port: str, lanes: List[int], tx_tapss: List[List[int]], prbs_bers: List[float]) -> None:
-        for tx_taps in tx_tapss:
-            if len(tx_taps) != self.num_tx_taps:
-                raise ValueError(f"Length of eqs {len(tx_taps)} does not match num_tx_taps {self.num_tx_taps}")
+    def record_data(self, port_name: str, lane_ber_dicts: List[Dict[str, Any]], lane_txeqs_dicts: List[Dict[str, Any]]) -> None:
         
-        for lane, tx_taps, prbs_ber in zip(lanes, tx_tapss, prbs_bers):
+        sorted_lane_txeqs_dicts = sorted(lane_txeqs_dicts, key=lambda x: x["lane"])
+        sorted_lane_ber_dicts = sorted(lane_ber_dicts, key=lambda x: x["lane"])
+
+        for lane_ber_dict, lane_txeqs_dict in zip(sorted_lane_ber_dicts, sorted_lane_txeqs_dicts):
+            lane = lane_ber_dict["lane"]
+            txeqs = lane_txeqs_dict["txeq_values"]
+            prbs_ber = lane_ber_dict["prbs_ber"]
+            self.logger.info(f"Lane ({lane}): Tx Eqs: {txeqs}, PRBS BER: {prbs_ber}")
+            
             time_str = time.strftime("%H:%M:%S", time.localtime())
-            port_pair = f"{tx_port} --> {rx_port}"
-            if port_pair not in self.database:
-                self.database[port_pair] = []
-            self.rec = dict()
+            
+            if port_name not in self.__database:
+                self.__database[port_name] = []
             self.rec["Time"] = time_str
             self.rec["Lane"] = lane
             for i in range(self.num_txtaps_pre):
-                self.rec[f"Pre{self.num_txtaps_pre - i}"] = tx_taps[i]
-            self.rec["Main"] = tx_taps[self.num_txtaps_pre]
+                self.rec[f"Pre{self.num_txtaps_pre - i}"] = txeqs[i]
+            self.rec["Main"] = txeqs[self.num_txtaps_pre]
             for i in range(self.num_txtaps_post):
-                self.rec[f"Post{i+1}"] = tx_taps[self.num_txtaps_pre + 1 + i]
+                self.rec[f"Post{i+1}"] = txeqs[self.num_txtaps_pre + 1 + i]
             self.rec["PRBS BER"] = '{:.2e}'.format(abs(prbs_ber))
 
-            self.database[port_pair].append(self.rec)
+            self.__database[port_name].append(self.rec)
             
     
     def generate_report(self, filename: str) -> None:
@@ -142,16 +166,16 @@ class HostTxEqTestReportGenerator:
             ["*******************************************"],
             ["Test:", self.name],
             ["Chassis:", self.chassis],
-            ["Datetime:", self.datetime],
+            ["Datetime:", self.__created_time],
             []
         ]
         with open(filename, 'w+') as csvfile:
             writer = csv.writer(csvfile)
             for line in headers:
                 writer.writerow(line)
-            for key, value in self.database.items():
+            for key, value in self.__database.items():
                 writer.writerow([key])
-                dict_writer = csv.DictWriter(csvfile, fieldnames=self.fieldnames)
+                dict_writer = csv.DictWriter(csvfile, fieldnames=self.__fieldnames)
                 dict_writer.writeheader()
                 for data in value:
                     dict_writer.writerow(data)

@@ -12,15 +12,15 @@ from typing import List, Any, Union
 type FreyaEdunPort = Union[ports.Z800FreyaPort, ports.Z1600EdunPort]
 
 # *************************************************************************************
-# func: hot_reconfiguration_supported
-# description: Check if the transceiver supports hot reconfiguration
+# func: check_eq_reconfig_support
+# description: Check what type of reconfiguration the transceiver supports
 # *************************************************************************************
-async def hot_reconfiguration_supported(port: FreyaEdunPort, logger_name: str) -> ReconfigurationSupport:
-    """Check if the transceiver supports hot reconfiguration
+async def check_eq_reconfig_support(port: FreyaEdunPort, logger_name: str) -> ReconfigurationSupport:
+    """Check what type of reconfiguration the transceiver supports
     """
     # Get logger
     logger = logging.getLogger(logger_name)
-    logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Check if supports hot reconfiguration")
+    logger.info(f"Port {port.kind.module_id}/{port.kind.port_id}: Check what type of reconfiguration it supports")
 
     _page = 0x00
     _start_addr = 2
@@ -30,15 +30,18 @@ async def hot_reconfiguration_supported(port: FreyaEdunPort, logger_name: str) -
     int_value = int(resp.value, 16)
     stepped_config_only = (int_value >> 6) & 0x01
     if stepped_config_only == 0:
-        return ReconfigurationSupport.Both
+        result = ReconfigurationSupport.Both
     else:
         auto_commisioning = int_value & 0x03
         if auto_commisioning == 2:
-            return ReconfigurationSupport.Hot
+            result = ReconfigurationSupport.Hot
         elif auto_commisioning == 1:
-            return ReconfigurationSupport.Regular
+            result = ReconfigurationSupport.Regular
         else:
-            return ReconfigurationSupport.Neither
+            result = ReconfigurationSupport.Neither
+    
+    logger.info(f"Reconfiguration supported: {result.name}")
+    return result
         
 # *************************************************************************************
 # func: rx_output_eq_control_supported

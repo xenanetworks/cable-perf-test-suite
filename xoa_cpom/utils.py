@@ -8,48 +8,12 @@ from xoa_driver.misc import Hex
 from xoa_driver.hlfuncs import mgmt
 from .enums import *
 import logging
-from typing import List, Any, Union, Dict, Tuple
+from typing import(List, Any, Union, Dict, Tuple, TYPE_CHECKING)
 import time, os
+from dataclasses import dataclass
 
 type FreyaEdunModule = Union[modules.Z800FreyaModule, modules.Z1600EdunModule]
 type FreyaEdunPort = Union[ports.Z800FreyaPort, ports.Z1600EdunPort]
-
-
-# *************************************************************************************
-# func: read_prbs_ber
-# description: Read PRBS BER from a specified lane
-# *************************************************************************************
-async def read_prbs_ber(port: FreyaEdunPort, lane: int, logger_name: str) -> float:
-    """Read PRBS BER from a specified lane. If zero errored bits, the BER is calculated as 4.6/prbs_bits for 99% confidence level.
-    Read more in https://www.lightwaveonline.com/home/article/16647704/explaining-those-ber-testing-mysteries
-    """
-    # Get logger
-    logger = logging.getLogger(logger_name)
-
-    assert 1<=lane<=8
-    # read starting PRBS BER
-    _prbs_ber = 0.0
-    _serdes = lane - 1
-    
-    while True:
-        resp = await port.layer1.serdes[_serdes].prbs.status.get()
-        logger.debug(f"PRBS Lock Status: {[(lane, resp.lock.name.lower().replace('prbs', ''))]}")
-        if resp.lock == enums.PRBSLockStatus.PRBSON:
-            break
-        await asyncio.sleep(1)
-    _prbs_bits = resp.byte_count * 8
-    _prbs_errors = resp.error_count
-    if _prbs_bits == 0:
-        logger.info(f"  PRBS BER [{lane}]: N/A (No bits sent)")
-        _prbs_ber = 1
-    if _prbs_errors == 0:
-        _prbs_ber = 4.6/_prbs_bits
-        # _prbs_ber = 0
-        logger.info(f"  PRBS BER [{lane}]: < {'{0:.3e}'.format(_prbs_ber)}")
-    else:
-        _prbs_ber = _prbs_errors/_prbs_bits
-        logger.info(f"  PRBS BER [{lane}]: {'{0:.3e}'.format(_prbs_ber)}")
-    return _prbs_ber
 
     
 # *************************************************************************************
@@ -82,328 +46,108 @@ async def test_done(port: FreyaEdunPort, lane: int, current_ber: float, target_b
     await port.layer1.serdes[_serdes].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
 
 # *************************************************************************************
-# func: get_port_list
-# description: Get port object list from the port pair list
+# func: portid_to_portobj
+# description: Get the port objects from the port pair list
 # *************************************************************************************
-def get_port_obj_list(tester_obj: testers.L23Tester, port_pair_list: List[Dict[str, str]], key_str: str) -> List[FreyaEdunPort]:
-    """Get port object list from the port pair list
+def portid_to_portobj(tester_obj: testers.L23Tester, port_pair_list: List[Dict[str, str]]) -> List[Dict[str, FreyaEdunPort]]:
+    """Get the port objects from the port pair list
+
+    :param tester_obj: The tester object
+    :type tester_obj: testers.L23Tester
+    :param port_pair_list: The list of port pairs as defined in the config file
+    :type port_pair_list: List[Dict[str, str]]
+    :return: List of port objects in the same order as the port pair list
+    :rtype: List[Dict[str, GenericL23Port]]
     """
-    _port_obj_list: List[FreyaEdunPort] = []
+    port_obj_list: List[Dict[str, FreyaEdunPort]] = []
     for port_pair in port_pair_list:
-        _port_str = port_pair[key_str]
+        _txport,_rxport = mgmt.get_ports(tester_obj, [port_pair["tx"], port_pair["rx"]])
+        port_obj_list.append({"tx": _txport, "rx": _rxport}) # type: ignore
+    return port_obj_list
 
-        # Access module on the tester
-        _mid = int(_port_str.split("/")[0])
-        _pid = int(_port_str.split("/")[1])
-        module_obj = tester_obj.modules.obtain(_mid)
 
-        if not isinstance(module_obj, modules.Z800FreyaModule) and not isinstance(module_obj, modules.Z1600EdunModule):
-            logging.info(f"This script is only for Freya & Edun module")
-            return []
+# # *************************************************************************************
+# # func: reserve_ports_in_list
+# # description: Reserve ports in the port object list
+# # *************************************************************************************
+# async def reserve_reset_ports_in_list(tester_obj: testers.L23Tester, port_obj_list: List[FreyaEdunPort]) -> None:
+#     """Reserve ports in the port object list
+#     """
+#     for _port in port_obj_list:
+#         _module_id = _port.kind.module_id
+#         _module = tester_obj.modules.obtain(_module_id)
+#         await mgmt.release_modules(modules=[_module], should_release_ports=False)
+#         await mgmt.reserve_ports(ports=[_port], reset=True)
+#     await asyncio.sleep(1.0)
 
-        # Get the port on module as TX port
-        port_obj = module_obj.ports.obtain(_pid)
+# # *************************************************************************************
+# # func: release_ports_in_list
+# # description: Release ports in the port object list
+# # *************************************************************************************
+# async def release_ports_in_list(port_obj_list: List[FreyaEdunPort]) -> None:
+#     """Release ports in the port object list
+#     """
+#     for _port in port_obj_list:
+#         await mgmt.release_ports(ports=[_port])
+#     await asyncio.sleep(1.0)
 
-        # Inset the port object to the list
-        _port_obj_list.append(port_obj)
-    return _port_obj_list
 
 # *************************************************************************************
-# func: reserve_ports_in_list
-# description: Reserve ports in the port object list
+# func: config_modules
+# description: Configure modules with media and port speed
 # *************************************************************************************
-async def reserve_reset_ports_in_list(tester_obj: testers.L23Tester, port_obj_list: List[FreyaEdunPort]) -> None:
-    """Reserve ports in the port object list
+async def config_modules(tester_obj: testers.L23Tester, module_str_configs: List[Tuple[str, str, str]], logger_name: str) -> None:
+    """Config each module in the list
+
+    :param module_str_configs: Module string configuration list, each item is a tuple of (module id, module_media, port_config)
+    :type module_str_configs: List[Tuple[str, str, str]]
+    :param logger_name: the logger name
+    :type logger_name: str
     """
-    for _port in port_obj_list:
-        _module_id = _port.kind.module_id
-        _module = tester_obj.modules.obtain(_module_id)
-        await mgmt.release_module(module=_module, should_release_ports=False)
-        await mgmt.reserve_port(_port, reset=True)
+
+    # Get logger
+    logger = logging.getLogger(logger_name)
+    module_configs =[]
+    for module_config_str in module_str_configs:
+        module_id, module_media_str, port_config_str = module_config_str
+        module_obj = mgmt.get_modules(tester_obj, [int(module_id)])[0]
+        module_media = enums.MediaConfigurationType[module_media_str]
+        port_count = int(port_config_str.split('x')[0])
+        port_speed = int(port_config_str.split('x')[1].replace('G','')) * 1000  # in Mbps
+        
+        logger.info(f"Configuring test module {module_id} to {module_media_str} {port_config_str}")
+        module_configs.append( (module_obj, module_media, port_count, port_speed) )
+    await mgmt.config_modules(module_configs=module_configs)
     await asyncio.sleep(1.0)
 
-# *************************************************************************************
-# func: release_ports_in_list
-# description: Release ports in the port object list
-# *************************************************************************************
-async def release_ports_in_list(port_obj_list: List[FreyaEdunPort]) -> None:
-    """Release ports in the port object list
-    """
-    for _port in port_obj_list:
-        await mgmt.release_port(_port)
-    await asyncio.sleep(1.0)
-
-# *************************************************************************************
-# func: create_report_dir
-# description: Create report directory
-# *************************************************************************************
-async def create_report_dir() -> str:
-    datetime = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-    path = "xena_cpom_" + datetime
-    if not os.path.exists(path):
-        os.makedirs(path)
-    return path
 
 
-# *************************************************************************************
-# func: change_module_media
-# description: Change module media and port speed
-# *************************************************************************************
-async def change_module_media(tester_obj: testers.L23Tester, module_list: List[int], media: enums.MediaConfigurationType, port_speed: str, logger_name: str) -> None:
-
-    # Get logger
-    logger = logging.getLogger(logger_name)
-    logger.info(f"Configuring test module {module_list} to {media.name} {port_speed}")
-
-    _port_count = int(port_speed.split("x")[0])
-    _port_speed = int(port_speed.split("x")[1].replace("G", ""))*1000
-
-    for _module_id in module_list:
-        _module = tester_obj.modules.obtain(_module_id)
-        await mgmt.release_module(module=_module, should_release_ports=True)
-        await mgmt.reserve_module(module=_module)
-        await mgmt.set_module_media_config(module=_module, media=media)
-        await mgmt.set_module_port_config(module=_module, port_count=_port_count, port_speed=_port_speed,)
 
 
-# *************************************************************************************
-# func: get_tx_tap_value
-# description: Get the TX tap value from the tx_taps list. 
-# -1 means pre1, -2 means pre2, 0 means main, 1 means post1, 2 means post2
-# *************************************************************************************
-async def read_single_tx_tap_value(port: FreyaEdunPort, serdes_index: int, tap_index: int, num_txeq_pre: int, num_txeq_post: int, tx_taps_max: List[int], tx_taps_min: List[int]) -> Tuple[int, int, int]:
-    """Get one Tx tap value from the port.
-    -1 means pre1, -2 means pre2, 0 means main, 1 means post1, 2 means post2
-
-    :return: (tap_value, tap_max, tap_min)
-    """
-    resp = await port.layer1.serdes[serdes_index].medium.tx.native.get()
-    tx_taps = resp.tap_values
-    
-    if tap_index < 0 and abs(tap_index) > num_txeq_pre:
-        raise ValueError("Invalid TXEQ_PRE tap index")
-    if tap_index > 0 and tap_index > num_txeq_post:
-        raise ValueError("Invalid TXEQ_POST tap index")
-    
-    _index = 0
-    if tap_index == 0:
-        _index = num_txeq_pre
-    elif tap_index < 0:
-        _index = num_txeq_pre + tap_index
-    else:
-        _index = num_txeq_pre + tap_index
-    return (tx_taps[_index], tx_taps_max[_index], tx_taps_min[_index])
 
 
-async def read_tx_taps_on_lanes(port: FreyaEdunPort, lanes: List[int]) -> List[List[int]]:
-    """Get TX tap value from the tx_taps list.
-    -1 means pre1, -2 means pre2, 0 means main, 1 means post1, 2 means post2
-    """
-    cmd_list = []
-    for lane in lanes:
-        _serdes_index = lane - 1
-        cmd_list.append(
-            port.layer1.serdes[_serdes_index].medium.tx.native.get()
-        )
-
-    resps = await utils.apply(*cmd_list)
-    tx_taps = []
-    for resp in resps:
-        tx_taps.append(resp.tap_values)
-    return tx_taps
 
 
-async def change_tx_tap_on_lanes(port: FreyaEdunPort, lanes: List[int], tap_index: int, num_txeq_pre: int, num_txeq_post: int, tx_taps_max: List[int], tx_taps_min: List[int], mode: str) -> List[int]:
-    """Increase one Tx tap value by step.
-    -1 means pre1, -2 means pre2, 0 means main, 1 means post1, 2 means post2
-    """
-    if tap_index < 0 and abs(tap_index) > num_txeq_pre:
-        raise ValueError("Invalid TXEQ_PRE tap index")
-    if tap_index > 0 and tap_index > num_txeq_post:
-        raise ValueError("Invalid TXEQ_POST tap index")
-    
-    max_sum = 0
-    if isinstance(port, ports.Z800FreyaPort):
-        max_sum = 87
-    elif isinstance(port, ports.Z1600EdunPort):
-        max_sum = 168
-
-    cmd_list = []
-    for lane in lanes:
-        _serdes_index = lane - 1
-        cmd_list.append(
-            port.layer1.serdes[_serdes_index].medium.tx.native.get()
-        )
-    resps = await utils.apply(*cmd_list)
-    
-    tx_taps_list = [resp.tap_values for resp in resps]
-
-    results = []
-    for tx_taps in tx_taps_list:
-        idx = tx_taps_list.index(tx_taps)
-        serdes_index = lanes[idx] - 1
-        current_sum = sum(abs(i) for i in tx_taps)
-        if current_sum >= max_sum:
-            continue
-        else:
-            _index = 0
-        if tap_index == 0:
-            _index = num_txeq_pre
-        elif tap_index < 0:
-            _index = num_txeq_pre + tap_index
-        else:
-            _index = num_txeq_pre + tap_index
-
-        if mode == "inc":
-            if tap_index == -1 or tap_index == 1:
-                if tx_taps[_index] <= tx_taps_min[_index]:
-                    continue
-                else:
-                    tx_taps[_index] -= 1
-                    await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
-                    results.append(lanes[idx])
-            else:
-                if tx_taps[_index] >= tx_taps_max[_index]:
-                    continue
-                else:
-                    tx_taps[_index] += 1
-                    await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
-                    results.append(lanes[idx])
-        elif mode == "dec":
-            if tap_index == -1 or tap_index == 1:
-                if tx_taps[_index] >= tx_taps_max[_index]:
-                    continue
-                else:
-                    tx_taps[_index] += 1
-                    await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
-                    results.append(lanes[idx])
-            else:
-                if tx_taps[_index] <= tx_taps_min[_index]:
-                    continue
-                else:
-                    tx_taps[_index] -= 1
-                    await port.layer1.serdes[serdes_index].medium.tx.native.set(tap_values=tx_taps)
-                    results.append(lanes[idx])
-
-    return results
-
-    
-async def start_prbs_on_lanes(port: FreyaEdunPort, lanes: List[int], logger_name: str) -> None:
-    """Start PRBS on a specified lane
-    """
-    # Get logger
-    logger = logging.getLogger(logger_name)
-
-    # start prbs on a lane
-    logger.info(f"Starting PRBS on Port {port.kind.module_id}/{port.kind.port_id} on Lanes {lanes}")
-
-    cmd_list = []
-    for lane in lanes:
-        _serdes_index = lane - 1
-        # await port.layer1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
-        cmd_list.append(
-            port.layer1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSON, error_on_off=enums.ErrorOnOff.ERRORSOFF)
-        )
-    await utils.apply(*cmd_list)
 
 
-async def stop_prbs_on_lanes(port: FreyaEdunPort, lanes: List[int], logger_name: str) -> None:
-    """Stop PRBS on a specified lane
-    """
-    # Get logger
-    logger = logging.getLogger(logger_name)
-
-    # stop prbs on a lane
-    logger.info(f"Stopping PRBS on Port {port.kind.module_id}/{port.kind.port_id} on Lanes {lanes}")
-
-    cmd_list = []
-    for lane in lanes:
-        _serdes_index = lane - 1
-        # await port.layer1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
-        cmd_list.append(
-            port.layer1.serdes[_serdes_index].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
-        )
-    await utils.apply(*cmd_list)
-
-async def load_preset_tx_tap_values(port: FreyaEdunPort, lanes: List[int], preset_tap_values: List[int], logger_name: str) -> None:
-    """Load preset TX tap values to the port
-    """
-    # Get logger
-    logger = logging.getLogger(logger_name)
-
-    # stop prbs on a lane
-    logger.info(f"Loading preset TX tap values {preset_tap_values} on Port {port.kind.module_id}/{port.kind.port_id} on Lane {lanes}")
-
-    cmd_list = []
-    for lane in lanes:
-        _serdes_index = lane - 1
-        cmd_list.append(
-            port.layer1.serdes[_serdes_index].medium.tx.native.set(tap_values=preset_tap_values)
-        )
-    await utils.apply(*cmd_list)
-
-async def read_prbs_bers(port: FreyaEdunPort, lanes: List[int], logger_name: str) -> List[float]:
-    """Read PRBS BER from a specified lane. If zero errored bits, the BER is calculated as 4.6/prbs_bits for 99% confidence level.
-    Read more in https://www.lightwaveonline.com/home/article/16647704/explaining-those-ber-testing-mysteries
-    """
-    # Get logger
-    logger = logging.getLogger(logger_name)
-
-    _prbs_ber = 0.0
-    
-    cmd_list = []
-    for lane in lanes:
-        _serdes_index = lane - 1
-        cmd_list.append(
-            port.layer1.serdes[_serdes_index].prbs.status.get()
-        )
-
-    while True:
-        resps = await utils.apply(*cmd_list)
-        lock_status_lanes: List[enums.PRBSLockStatus] = [resp.lock for resp in resps]
-        logger.debug(f"PRBS Lock Status: {[(lane, lock_status.name.lower().replace('prbs', '')) for lane, lock_status in zip(lanes, lock_status_lanes)]}")
-        if all(lock_status == enums.PRBSLockStatus.PRBSON for lock_status in lock_status_lanes):
-            break
-        await asyncio.sleep(1)
-
-    results = []
-    for i in range(len(resps)):
-        _prbs_bits = resps[i].byte_count * 8
-        _prbs_errors = resps[i].error_count
-        _prbs_ber = 1
-        if _prbs_bits == 0:
-            logger.info(f"  PRBS BER [{lanes[i]}]: N/A (No bits sent)")
-            _prbs_ber = 1
-        elif _prbs_errors == 0:
-            _prbs_ber = 4.6/_prbs_bits
-            # _prbs_ber = 0
-            logger.info(f"  PRBS BER [{lanes[i]}]: < {'{0:.3e}'.format(_prbs_ber)}")
-        else:
-            _prbs_ber = _prbs_errors/_prbs_bits
-            logger.info(f"  PRBS BER [{lanes[i]}]: {'{0:.3e}'.format(_prbs_ber)}")
-        results.append(_prbs_ber)
-    
-    return results
 
 
-def get_lanes_to_optimize(prbs_bers: List[float], target_ber: float) -> List[int]:
-    """Get lanes that need to be optimized based on current PRBS BER and target BER
-    """
-    lanes_to_optimize = []
-    for prbs_ber in prbs_bers:
-        if prbs_ber > target_ber:
-            lanes_to_optimize.append(prbs_bers.index(prbs_ber))
-    return lanes_to_optimize
 
-def update_last_prbs_bers_for_opt_lanes(last_prbs_bers: List[float], lanes_to_optimize: List[int], original_lanes: List[int]) -> List[float]:
-    """Update last PRBS BERs for the lanes that have been optimized
-    """
-    # difference between original_lanes and lanes_to_optimize
-    for lane in original_lanes:
-        if lane not in lanes_to_optimize:
-            idx = original_lanes.index(lane)
-            last_prbs_bers[idx] = -1
-    # remove all -1 from last_prbs_bers
-    while -1 in last_prbs_bers:
-        last_prbs_bers.remove(-1)
-    return last_prbs_bers
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
