@@ -214,7 +214,7 @@ async def clear_prbs_counters(port: FreyaEdunPort, logger_name: str) -> None:
     
     logger = logging.getLogger(logger_name)
     logger.info(f"Clearing PRBS counters")
-    await port.layer1.pcs_fec.clear.set()
+    await port.layer1.pcs.clear.set()
     await asyncio.sleep(1)
 
 
