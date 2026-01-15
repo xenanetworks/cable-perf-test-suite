@@ -3,40 +3,17 @@
 # *************************************
 
 import asyncio
-from xoa_driver import testers, modules, ports, enums
+from xoa_driver import testers, modules, ports, enums, utils
 from xoa_driver.misc import Hex
 from xoa_driver.hlfuncs import mgmt
 from .enums import *
 import logging
-from typing import List, Any
+from typing import(List, Any, Union, Dict, Tuple, TYPE_CHECKING)
 import time, os
+from dataclasses import dataclass
 
-# *************************************************************************************
-# func: read_prbs_ber
-# description: Read PRBS BER from a specified lane
-# *************************************************************************************
-async def read_prbs_ber(port: ports.Z800FreyaPort, lane: int, logger_name: str) -> float:
-    """Read PRBS BER from a specified lane. If zero errored bits, the BER is calculated as 4.6/prbs_bits for 99% confidence level.
-    Read more in https://www.lightwaveonline.com/home/article/16647704/explaining-those-ber-testing-mysteries
-    """
-    # Get logger
-    logger = logging.getLogger(logger_name)
-
-    assert 1<=lane<=8
-    # read starting PRBS BER
-    _prbs_ber = 0.0
-    _serdes = lane - 1
-    resp = await port.serdes[_serdes].prbs.status.get()
-    _prbs_bits = resp.byte_count * 8
-    _prbs_errors = resp.error_count
-    if _prbs_errors == 0:
-        # _prbs_ber = 4.6/_prbs_bits
-        _prbs_ber = 0
-        logger.info(f"  PRBS BER [{lane}]: < {'{0:.3e}'.format(_prbs_ber)}")
-    else:
-        _prbs_ber = _prbs_errors/_prbs_bits
-        logger.info(f"  PRBS BER [{lane}]: {'{0:.3e}'.format(_prbs_ber)}")
-    return _prbs_ber
+type FreyaEdunModule = Union[modules.Z800FreyaModule, modules.Z1600EdunModule]
+type FreyaEdunPort = Union[ports.Z800FreyaPort, ports.Z1600EdunPort]
 
     
 # *************************************************************************************
@@ -53,7 +30,7 @@ def less_equal(current: float, target:float) -> bool:
 # func: test_done
 # description: Show test result and stop PRBS
 # *************************************************************************************
-async def test_done(port: ports.Z800FreyaPort, lane: int, current_ber: float, target_ber: float, amp_db: int, pre_db: int, post_db: int, is_successful: bool, logger_name: str):
+async def test_done(port: FreyaEdunPort, lane: int, current_ber: float, target_ber: float, amp_db: int, pre_db: int, post_db: int, is_successful: bool, logger_name: str):
     """Show test result and stop PRBS
     """
     # Get logger
@@ -66,88 +43,85 @@ async def test_done(port: ports.Z800FreyaPort, lane: int, current_ber: float, ta
 
     # stop PRBS on port
     _serdes = lane - 1
-    await port.serdes[_serdes].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
+    await port.layer1.serdes[_serdes].prbs.control.set(prbs_seed=17, prbs_on_off=enums.PRBSOnOff.PRBSOFF, error_on_off=enums.ErrorOnOff.ERRORSOFF)
 
 # *************************************************************************************
-# func: get_port_list
-# description: Get port object list from the port pair list
+# func: convert_port_ids_to_objects
+# description: Get the port objects from the port pair list
 # *************************************************************************************
-def get_port_list(tester_obj: testers.L23Tester, port_pair_list: List[dict], key_str: str) -> List[Any]:
-    """Get port object list from the port pair list
+def convert_port_ids_to_objects(tester_obj: testers.L23Tester, port_pair_list: List[Dict[str, str]]) -> List[Dict[str, FreyaEdunPort]]:
+    """Get the port objects from the port pair list
+
+    :param tester_obj: The tester object
+    :type tester_obj: testers.L23Tester
+    :param port_pair_list: The list of port pairs as defined in the config file
+    :type port_pair_list: List[Dict[str, str]]
+    :return: List of port objects in the same order as the port pair list
+    :rtype: List[Dict[str, GenericL23Port]]
     """
-    _port_obj_list = []
+    port_obj_list: List[Dict[str, FreyaEdunPort]] = []
     for port_pair in port_pair_list:
-        _port_str = port_pair[key_str]
+        _txport,_rxport = mgmt.obtain_ports_by_ids(tester_obj, [port_pair["tx"], port_pair["rx"]])
+        port_obj_list.append({"tx": _txport, "rx": _rxport}) # type: ignore
+    return port_obj_list
 
-        # Access module on the tester
-        _mid = int(_port_str.split("/")[0])
-        _pid = int(_port_str.split("/")[1])
-        module_obj = tester_obj.modules.obtain(_mid)
-
-        if not isinstance(module_obj, modules.Z800FreyaModule):
-            logging.info(f"This script is only for Freya module")
-            return []
-
-        # Get the port on module as TX port
-        port_obj = module_obj.ports.obtain(_pid)
-
-        # Inset the port object to the list
-        _port_obj_list.append(port_obj)
-    return _port_obj_list
 
 # *************************************************************************************
-# func: reserve_ports_in_list
-# description: Reserve ports in the port object list
+# func: config_modules
+# description: Configure modules with media and port speed
 # *************************************************************************************
-async def reserve_reset_ports_in_list(tester_obj: testers.L23Tester, port_obj_list: List[ports.Z800FreyaPort]) -> None:
-    """Reserve ports in the port object list
+async def config_modules(tester_obj: testers.L23Tester, module_str_configs: List[Tuple[str, str, str]], logger_name: str) -> None:
+    """Config each module in the list
+
+    :param module_str_configs: Module string configuration list, each item is a tuple of (module id, module_media, port_config)
+    :type module_str_configs: List[Tuple[str, str, str]]
+    :param logger_name: the logger name
+    :type logger_name: str
     """
-    for _port in port_obj_list:
-        _module_id = _port.kind.module_id
-        _module = tester_obj.modules.obtain(_module_id)
-        await mgmt.release_module(module=_module, should_release_ports=False)
-        await mgmt.reserve_port(_port, reset=True)
-    await asyncio.sleep(1.0)
-
-# *************************************************************************************
-# func: release_ports_in_list
-# description: Release ports in the port object list
-# *************************************************************************************
-async def release_ports_in_list(port_obj_list: List[ports.Z800FreyaPort]) -> None:
-    """Release ports in the port object list
-    """
-    for _port in port_obj_list:
-        await mgmt.release_port(_port)
-    await asyncio.sleep(1.0)
-
-# *************************************************************************************
-# func: create_report_dir
-# description: Create report directory
-# *************************************************************************************
-async def create_report_dir() -> str:
-    datetime = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-    path = "xena_cpom_" + datetime
-    if not os.path.exists(path):
-        os.makedirs(path)
-    return path
-
-
-# *************************************************************************************
-# func: change_module_media
-# description: Change module media and port speed
-# *************************************************************************************
-async def change_module_media(tester_obj: testers.L23Tester, module_list: List[int], media: enums.MediaConfigurationType, port_speed: str, logger_name: str) -> None:
 
     # Get logger
     logger = logging.getLogger(logger_name)
-    logger.info(f"Configuring test module {module_list} to {media.name} {port_speed}")
+    module_configs =[]
+    for module_config_str in module_str_configs:
+        module_id, module_media_str, port_config_str = module_config_str
+        module_obj = mgmt.obtain_modules_by_ids(tester_obj, [module_id])[0]
+        module_media = enums.MediaConfigurationType[module_media_str]
+        port_count = int(port_config_str.split('x')[0])
+        port_speed = int(port_config_str.split('x')[1].replace('G','')) * 1000  # in Mbps
+        
+        logger.info(f"Configuring test module {module_id} to {module_media_str} {port_config_str}")
+        module_configs.append( (module_obj, module_media, port_count, port_speed) )
+    await mgmt.set_module_configs(module_configs=module_configs)
+    await asyncio.sleep(1.0)
 
-    _port_count = int(port_speed.split("x")[0])
-    _port_speed = int(port_speed.split("x")[1].replace("G", ""))*1000
 
-    for _module_id in module_list:
-        _module = tester_obj.modules.obtain(_module_id)
-        await mgmt.release_module(module=_module, should_release_ports=True)
-        await mgmt.reserve_module(module=_module)
-        await mgmt.set_module_media_config(module=_module, media=media)
-        await mgmt.set_module_port_config(module=_module, port_count=_port_count, port_speed=_port_speed,)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
