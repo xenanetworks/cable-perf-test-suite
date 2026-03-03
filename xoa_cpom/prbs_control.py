@@ -12,8 +12,8 @@ from typing import(List, Any, Union, Dict, Tuple, TYPE_CHECKING)
 import time, os
 from dataclasses import dataclass
 
-type FreyaEdunModule = Union[modules.Z800FreyaModule, modules.Z1600EdunModule]
-type FreyaEdunPort = Union[ports.Z800FreyaPort, ports.Z1600EdunPort]
+FreyaEdunModule = Union[modules.Z800FreyaModule, modules.Z1600EdunModule]
+FreyaEdunPort = Union[ports.Z800FreyaPort, ports.Z1600EdunPort]
 
 if TYPE_CHECKING:
     from xoa_driver.lli import commands as llicmds
