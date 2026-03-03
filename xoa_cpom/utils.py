@@ -12,8 +12,8 @@ from typing import(List, Any, Union, Dict, Tuple, TYPE_CHECKING)
 import time, os
 from dataclasses import dataclass
 
-type FreyaEdunModule = Union[modules.Z800FreyaModule, modules.Z1600EdunModule]
-type FreyaEdunPort = Union[ports.Z800FreyaPort, ports.Z1600EdunPort]
+FreyaEdunModule = Union[modules.Z800FreyaModule, modules.Z1600EdunModule]
+FreyaEdunPort = Union[ports.Z800FreyaPort, ports.Z1600EdunPort]
 
     
 # *************************************************************************************
@@ -49,7 +49,7 @@ async def test_done(port: FreyaEdunPort, lane: int, current_ber: float, target_b
 # func: convert_port_ids_to_objects
 # description: Get the port objects from the port pair list
 # *************************************************************************************
-def convert_port_ids_to_objects(tester_obj: testers.L23Tester, port_pair_list: List[Dict[str, str]]) -> List[Dict[str, FreyaEdunPort]]:
+async def convert_port_ids_to_objects(tester_obj: testers.L23Tester, port_pair_list: List[Dict[str, str]]) -> List[Dict[str, FreyaEdunPort]]:
     """Get the port objects from the port pair list
 
     :param tester_obj: The tester object
@@ -61,7 +61,7 @@ def convert_port_ids_to_objects(tester_obj: testers.L23Tester, port_pair_list: L
     """
     port_obj_list: List[Dict[str, FreyaEdunPort]] = []
     for port_pair in port_pair_list:
-        _txport,_rxport = mgmt.obtain_ports_by_ids(tester_obj, [port_pair["tx"], port_pair["rx"]])
+        _txport,_rxport = await mgmt.obtain_ports_by_ids(tester_obj, [port_pair["tx"], port_pair["rx"]])
         port_obj_list.append({"tx": _txport, "rx": _rxport}) # type: ignore
     return port_obj_list
 
@@ -84,7 +84,8 @@ async def config_modules(tester_obj: testers.L23Tester, module_str_configs: List
     module_configs =[]
     for module_config_str in module_str_configs:
         module_id, module_media_str, port_config_str = module_config_str
-        module_obj = mgmt.obtain_modules_by_ids(tester_obj, [module_id])[0]
+        module_objs = await mgmt.obtain_modules_by_ids(tester_obj, [module_id])
+        module_obj = module_objs[0]
         module_media = enums.MediaConfigurationType[module_media_str]
         port_count = int(port_config_str.split('x')[0])
         port_speed = int(port_config_str.split('x')[1].replace('G','')) * 1000  # in Mbps

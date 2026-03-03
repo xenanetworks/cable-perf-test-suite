@@ -9,7 +9,7 @@ from .enums import *
 import logging
 from typing import List, Any, Union
 
-type FreyaEdunPort = Union[ports.Z800FreyaPort, ports.Z1600EdunPort]
+FreyaEdunPort = Union[ports.Z800FreyaPort, ports.Z1600EdunPort]
 
 # *************************************************************************************
 # func: check_eq_reconfig_support
