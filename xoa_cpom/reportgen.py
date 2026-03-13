@@ -19,11 +19,16 @@ async def create_report_dir() -> str:
         os.makedirs(path)
     return path
 
+
+# *************************************************************************************
+# class: TcvrRxOutputEqTestReportGenerator
+# description: Generate report for Tcvr Rx Output EQ Test
+# *************************************************************************************
 class TcvrRxOutputEqTestReportGenerator:
-    def __init__(self, logger_name: str, name: str = "Tcvr Rx Output EQ Test", chassis: str = "10.10.10.10"):
+    def __init__(self, logger_name: str, chassis_list: List[str], name: str = "Tcvr Rx Output EQ Test"):
         self.logger = logging.getLogger(logger_name)
         self.name = name
-        self.chassis = chassis
+        self.chassis_list = chassis_list
         self.__fieldnames = ["Time", "Lane", "Amplitude", "PreCursor", "PostCursor", "PRBS BER"]
         self.__create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         self.__database = {}
@@ -47,7 +52,7 @@ class TcvrRxOutputEqTestReportGenerator:
         headers = [
             ["*******************************************"],
             ["Test:", self.name],
-            ["Chassis:", self.chassis],
+            ["Chassis:", ', '.join(self.chassis_list)],
             ["Datetime:", self.__create_time],
             []
         ]
@@ -64,11 +69,16 @@ class TcvrRxOutputEqTestReportGenerator:
                 writer.writerow([])
 
 
+
+# *************************************************************************************
+# class: TcvrTxInputEqTestReportGenerator
+# description: Generate report for Tcvr Tx Input EQ Test
+# *************************************************************************************
 class TcvrTxInputEqTestReportGenerator:
-    def __init__(self, logger_name: str, name: str = "Tcvr Rx Output EQ Test", chassis: str = "10.10.10.10"):
+    def __init__(self, logger_name: str, chassis_list: List[str], name: str = "Tcvr Tx Input EQ Test"):
         self.logger = logging.getLogger(logger_name)
         self.name = name
-        self.chassis =chassis
+        self.chassis_list = chassis_list
         self.__fieldnames = ["Time", "Lane", "Tx EQ", "PRBS BER"]
         self.__create_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         self.__database = {}
@@ -90,7 +100,7 @@ class TcvrTxInputEqTestReportGenerator:
         headers = [
             ["*******************************************"],
             ["Test:", self.name],
-            ["Chassis:", self.chassis],
+            ["Chassis:", ', '.join(self.chassis_list)],
             ["Datetime:", self.__create_time],
             []
         ]
@@ -107,11 +117,15 @@ class TcvrTxInputEqTestReportGenerator:
                 writer.writerow([])
 
 
+# *************************************************************************************
+# class: HostTxEqTestReportGenerator
+# description: Generate report for Host Tx EQ Test
+# *************************************************************************************
 class HostTxEqTestReportGenerator:
-    def __init__(self, logger_name: str, name: str = "Host Tx EQ Test", chassis: str = "10.10.10.10"):
+    def __init__(self, logger_name: str, chassis_list: List[str], name: str = "Host Tx EQ Test"):
         self.logger = logging.getLogger(logger_name)
         self.name = name
-        self.chassis = chassis
+        self.chassis_list = chassis_list
         self.__fieldnames = ["Time", "Lane", "Equalizers", "PRBS BER"]
         self.__created_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         self.__database = {}
@@ -165,7 +179,7 @@ class HostTxEqTestReportGenerator:
         headers = [
             ["*******************************************"],
             ["Test:", self.name],
-            ["Chassis:", self.chassis],
+            ["Chassis:", ', '.join(self.chassis_list)],
             ["Datetime:", self.__created_time],
             []
         ]

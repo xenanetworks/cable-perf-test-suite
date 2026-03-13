@@ -276,6 +276,7 @@ async def write_txeq_to_lanes(port: FreyaEdunPort, lane_txeq_list: List[Tuple[in
     cmd_list = []
     for _lane, _txeq_values in lane_txeq_list:
         _serdes_index = _lane - 1
+        _txeq_values = [x for x in _txeq_values if x is not None]
         cmd_list.append(
             port.layer1.serdes[_serdes_index].medium.tx.native.set(tap_values=_txeq_values)
         )

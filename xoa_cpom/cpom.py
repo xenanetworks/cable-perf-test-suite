@@ -6,11 +6,14 @@ from xoa_driver import testers, modules, ports, enums
 from xoa_driver.hlfuncs import mgmt
 from .utils import *
 from .models import *
-from .subtests import *
+from .subtests.host_tx_eq import XenaHostTxEqOptimization
+from .subtests.rx_output_eq import XenaTcvrRxOutputEqOptimization
+from .subtests.tx_input_eq import XenaTcvrTxInputEqOptimization
 import yaml, json
 from pathlib import Path
 import logging
 from typing import Optional
+from .reportgen import *
 
 # *************************************************************************************
 # class: XenaCablePerfOptimization
@@ -27,7 +30,7 @@ class XenaCablePerfOptimization:
         self.enable_comm_trace = enable_comm_trace
         self.test_config_file = test_config_file
         self.test_config: CablePerformanceTestConfig
-        self.tester_obj: testers.L23Tester
+        self.tester_objs: List[testers.L23Tester]
         self.rx_output_eq_optimization_test: Optional[XenaTcvrRxOutputEqOptimization] = None
         """
         Optimizing RX Output Equalization        
@@ -46,14 +49,17 @@ class XenaCablePerfOptimization:
         self.load_test_config(test_config_file)
 
     async def connect(self):
-        """Connect to the chassis and create a tester object, and create a report directory for the test report and logs.
+        """Connect to the chassis and create tester object, and create a report directory for the test report and logs.
         """
-        self.tester_obj = await testers.L23Tester(
-            host=self.chassis_ip, 
-            username=self.username, 
-            password=self.password, 
-            port=self.tcp_port, 
-            enable_logging=self.enable_comm_trace)
+        self.tester_objs = []
+        for chassis in self.test_config.chassis_list:
+            tester_obj = await testers.L23Tester(
+                host=chassis.chassis_ip, 
+                username=self.test_config.username, 
+                password=chassis.password, 
+                port=chassis.tcp_port, 
+                enable_logging=self.enable_comm_trace)
+            self.tester_objs.append(tester_obj)
 
         self.path = await create_report_dir()
 
@@ -69,16 +75,17 @@ class XenaCablePerfOptimization:
         logger = logging.getLogger(self.logger_name)
         logger.info(f"#####################################################################")
         logger.info(f"Welcome to Xena Cable Performance Optimization Test")
-        logger.info(f"Chassis:              {self.chassis_ip}")
+        logger.info(f"Chassis:              {', '.join([chassis.chassis_ip for chassis in self.test_config.chassis_list])}")
         logger.info(f"Username:             {self.username}")
         logger.info(f"#####################################################################")
 
     async def disconnect(self):
-        """Disconnect from the tester.
+        """Disconnect from the testers.
         """
-        await self.tester_obj.session.logoff()
+        for tester_obj in self.tester_objs:
+            await tester_obj.session.logoff()
         logger = logging.getLogger(self.logger_name)
-        logger.info(f"Gracefully disconnect from tester")
+        logger.info(f"Gracefully disconnect from testers")
         logger.info(f"Bye!")
 
     def load_test_config(self, test_config_file: str):
@@ -97,44 +104,30 @@ class XenaCablePerfOptimization:
         """Run the TX Input Equalization optimization test, if configured.
         """
         if self.test_config.tcvr_tx_input_eq_test_config is not None:
-            self.tx_input_eq_optimization_test = XenaTcvrTxInputEqOptimization(self.tester_obj, self.test_config.tcvr_tx_input_eq_test_config, self.logger_name, self.report_filepathname)
+            self.tx_input_eq_optimization_test = XenaTcvrTxInputEqOptimization(self.tester_objs, self.test_config.tcvr_tx_input_eq_test_config, self.logger_name, self.report_filepathname)
             await self.tx_input_eq_optimization_test.run()
 
     async def run_rx_output_eq_optimization_test(self):
         """Run the RX Output Equalization optimization test, if configured.
         """
         if self.test_config.tcvr_rx_output_eq_test_config is not None:
-            self.rx_output_eq_optimization_test  = XenaTcvrRxOutputEqOptimization(self.tester_obj, self.test_config.tcvr_rx_output_eq_test_config, self.logger_name, self.report_filepathname)
+            self.rx_output_eq_optimization_test  = XenaTcvrRxOutputEqOptimization(self.tester_objs, self.test_config.tcvr_rx_output_eq_test_config, self.logger_name, self.report_filepathname)
             await self.rx_output_eq_optimization_test.run()
 
     async def run_host_tx_eq_optimization_test(self):
         """Run the Host TX Equalization optimization test, if configured.
         """
         if self.test_config.host_tx_eq_test_config is not None:
-            self.host_tx_eq_optimization_test = XenaHostTxEqOptimization(self.tester_obj, self.test_config.host_tx_eq_test_config, self.logger_name, self.report_filepathname)
+            self.host_tx_eq_optimization_test = XenaHostTxEqOptimization(self.tester_objs, self.test_config.host_tx_eq_test_config, self.logger_name, self.report_filepathname)
             await self.host_tx_eq_optimization_test.run()
 
-    @property
-    def chassis_ip(self):
-        return self.test_config.chassis_ip
+    # @property
+    # def chassis_credentials(self):
+    #     return [(chassis.chassis_ip, chassis.username, chassis.password) for chassis in self.test_config.chassis_list]
     
     @property
     def username(self):
         return self.test_config.username
-    
-    @property
-    def password(self):
-        if self.test_config.password is None:
-            return "xena"
-        else:
-            return self.test_config.password
-    
-    @property
-    def tcp_port(self):
-        if self.test_config.tcp_port is None:
-            return 22606
-        else:
-            return self.test_config.tcp_port
     
     @property
     def log_filename(self):
