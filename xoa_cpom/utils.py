@@ -49,11 +49,11 @@ async def test_done(port: FreyaEdunPort, lane: int, current_ber: float, target_b
 # func: convert_port_ids_to_objects
 # description: Get the port objects from the port pair list
 # *************************************************************************************
-async def convert_port_ids_to_objects(tester_obj: testers.L23Tester, port_pair_list: List[Dict[str, str]]) -> List[Dict[str, FreyaEdunPort]]:
+async def convert_port_ids_to_objects(tester_objs: List[testers.L23Tester], port_pair_list: List[Dict[str, str]]) -> List[Dict[str, FreyaEdunPort]]:
     """Get the port objects from the port pair list
 
-    :param tester_obj: The tester object
-    :type tester_obj: testers.L23Tester
+    :param tester_objs: The list of tester objects
+    :type tester_objs: List[testers.L23Tester]
     :param port_pair_list: The list of port pairs as defined in the config file
     :type port_pair_list: List[Dict[str, str]]
     :return: List of port objects in the same order as the port pair list
@@ -61,7 +61,10 @@ async def convert_port_ids_to_objects(tester_obj: testers.L23Tester, port_pair_l
     """
     port_obj_list: List[Dict[str, FreyaEdunPort]] = []
     for port_pair in port_pair_list:
-        _txport,_rxport = await mgmt.obtain_ports_by_ids(tester_obj, [port_pair["tx"], port_pair["rx"]])
+        tx_tester_obj = find_tester_obj(port_pair["tx"].split(":")[0], tester_objs)
+        rx_tester_obj = find_tester_obj(port_pair["rx"].split(":")[0], tester_objs)
+        _txport = await mgmt.obtain_port_by_id(tx_tester_obj, port_pair["tx"].split(":")[1])
+        _rxport = await mgmt.obtain_port_by_id(rx_tester_obj, port_pair["rx"].split(":")[1])
         port_obj_list.append({"tx": _txport, "rx": _rxport}) # type: ignore
     return port_obj_list
 
@@ -84,6 +87,7 @@ async def config_modules(tester_obj: testers.L23Tester, module_str_configs: List
     module_configs =[]
     for module_config_str in module_str_configs:
         module_id, module_media_str, port_config_str = module_config_str
+        # print(f"{module_id}, {module_media_str}, {port_config_str}")
         module_objs = await mgmt.obtain_modules_by_ids(tester_obj, [module_id])
         module_obj = module_objs[0]
         module_media = enums.MediaConfigurationType[module_media_str]
@@ -96,6 +100,24 @@ async def config_modules(tester_obj: testers.L23Tester, module_str_configs: List
     await asyncio.sleep(1.0)
 
 
+# *************************************************************************************
+# func: find_tester_obj
+# description: Find the tester object from the tester object list based on chassis IP
+# *************************************************************************************
+def find_tester_obj(chassis_ip: str, tester_objs: List[testers.L23Tester]) -> testers.L23Tester:
+    """Find the tester object from the tester object list based on chassis IP
+
+    :param chassis_ip: The chassis IP address
+    :type chassis_ip: str
+    :param tester_objs: The list of tester objects
+    :type tester_objs: List[testers.L23Tester]
+    :return: The tester object with the matching chassis IP
+    :rtype: testers.L23Tester
+    """
+    for tester_obj in tester_objs:
+        if tester_obj.info.host == chassis_ip:
+            return tester_obj
+    raise ValueError(f"Tester object with chassis IP {chassis_ip} not found")
 
 
 

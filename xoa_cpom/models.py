@@ -32,12 +32,12 @@ class TcvrTxInputEqRange(BaseModel):
     max: int
 
 class HostTxEqPreset(BaseModel):
-    pre3: int
-    pre2: int
-    pre1: int
-    main: int
-    post1: int
-    post2: int
+    pre3: Optional[int] = None
+    pre2: Optional[int] = None
+    pre1: Optional[int] = None
+    main: Optional[int] = None
+    post1: Optional[int] = None
+    post2: Optional[int] = None
 
 class TcvrRxOutputEqTestConfig(BaseModel):
     port_pair_list: list[PortPair]
@@ -72,11 +72,15 @@ class HostTxEqTestConfig(BaseModel):
     optimize_mode: str  # "heuristic" or "exhaustive"
     optimize_txeq_ids: List[int]
 
-class CablePerformanceTestConfig(BaseModel):
+class ChassisRepositoryItem(BaseModel):
     chassis_ip: str
+    password: str = "xena"
+    tcp_port: int = 22606
+    
+
+class CablePerformanceTestConfig(BaseModel):
+    chassis_list: List[ChassisRepositoryItem]
     username: str
-    password: Optional[str] = None
-    tcp_port: Optional[int] = None
     log_filename: Optional[str] = None
     csv_report_filename: str
     tcvr_rx_output_eq_test_config: Optional[TcvrRxOutputEqTestConfig] = None
