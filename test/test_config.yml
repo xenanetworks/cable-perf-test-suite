@@ -24,11 +24,11 @@ test_config:
     target_ber: 1e-10
     start_txeq:
       pre3: 0
-      pre2: 10
-      pre1: -36
+      pre2: 0
+      pre1: -30
       main: 103
       post1: 0
       post2: 0
     optimize_mode: "exhaustive"  # "heuristic" or "exhaustive"
-    optimize_txeq_ids: [0, -1, 1, -2, -3, 0]
+    optimize_txeq_ids: [0, -1, 1, -2, -3, 2]
 

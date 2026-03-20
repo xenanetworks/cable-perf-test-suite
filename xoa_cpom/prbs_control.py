@@ -8,7 +8,13 @@ from xoa_driver.misc import Hex
 from xoa_driver.hlfuncs import mgmt
 from .enums import *
 import logging
-from typing import(List, Any, Union, Dict, Tuple, TYPE_CHECKING)
+from typing import(
+    List, 
+    Any, 
+    Union, 
+    Dict, 
+    Tuple, 
+    TYPE_CHECKING)
 import time, os
 from dataclasses import dataclass
 
@@ -120,7 +126,7 @@ async def stop_prbs_on_lanes(port: FreyaEdunPort, lanes: List[int], logger_name:
 # func: read_ber_from_lanes
 # description: Read PRBS BER from the lanes.
 # *************************************************************************************
-async def read_ber_from_lanes(port: FreyaEdunPort, lanes: List[int], logger_name: str) -> List[Dict[str, Any]]:
+async def read_ber_from_lanes(port: FreyaEdunPort, lanes: List[int], logger_name: str, attempts: int = 5) -> List[Dict[str, Any]]:
     """Read the PRBS BER from the lanes
 
     :param port: Port object
@@ -129,34 +135,44 @@ async def read_ber_from_lanes(port: FreyaEdunPort, lanes: List[int], logger_name
     :type lanes: List[int]
     :param logger_name: Logger name
     :type logger_name: str
+    :param attempts: Number of attempts to check PRBS status off for the lanes. Each attempt is made after 1s interval. Default is 5 attempts (5s total).
+    :type attempts: int
     :return: List of dictionaries containing {"lane": lane number, "prbs_ber": PRBS BER value}.
     :rtype: List[Dict[str, Any]]
     """
     
     logger = logging.getLogger(logger_name)
 
-    _prbs_ber = 0.0
+    _prbs_ber: float = 0.0
     
     cmd_list = []
     for _lane in lanes:
-        _serdes_index = _lane - 1
+        _serdes_index: int = _lane - 1
         cmd_list.append(
             port.layer1.serdes[_serdes_index].prbs.status.get()
         )
 
+    _reading_failures: int = 0
+    logger.info(f"Waiting for PRBS to be OFF on Lanes {lanes} before reading their BER values...")
     while True:
         resps = await utils.apply(*cmd_list)
         lock_status_lanes: List[enums.PRBSLockStatus] = [resp.lock for resp in resps]
-        logger.debug(f"PRBS Lock Status: {[(lane, lock_status.name.lower().replace('prbs', '')) for lane, lock_status in zip(lanes, lock_status_lanes)]}")
+
+        logger.info(f"PRBS Lock Status: {[(lane, lock_status.name.lower().replace('prbs', '')) for lane, lock_status in zip(lanes, lock_status_lanes)]}")
+
         if all(lock_status == enums.PRBSLockStatus.PRBSOFF or lock_status == enums.PRBSLockStatus.PRBSOFFUNSTABLE for lock_status in lock_status_lanes):
             break
         await asyncio.sleep(1)
+        _reading_failures += 1
+        if _reading_failures >= attempts:
+            logger.warning(f"Specified lanes failed to be PRBS OFF after {attempts} attempts.")
+            break
 
-    results = []
+    results: list[dict[str, float | int]] = []
     for _lane, _resp in zip(lanes, resps):
-        _prbs_bits = _resp.byte_count * 8
-        _prbs_errors = _resp.error_count
-        _prbs_ber = 1
+        _prbs_bits: int = _resp.byte_count * 8
+        _prbs_errors: int = _resp.error_count
+        _prbs_ber: float = 1
         if _prbs_bits == 0:
             logger.info(f"  PRBS BER [{_lane}]: N/A (No bits sent)")
             _prbs_ber = 1
@@ -189,7 +205,7 @@ def update_last_prbs_bers_for_opt_lanes(curr_best_bers: List[float], curr_lanes:
     :rtype: List[float]
     """
     # difference between reference_lanes and curr_lanes
-    curr_lanes_set = set(curr_lanes)
+    curr_lanes_set: set[int] = set(curr_lanes)
     for idx, _lane in enumerate(reference_lanes):
         if _lane not in curr_lanes_set:
             curr_best_bers[idx] = -1
