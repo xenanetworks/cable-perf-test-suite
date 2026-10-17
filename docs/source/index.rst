@@ -1,5 +1,5 @@
 =====================================================
-Xena Cable Performance Optimization Methodology
+Interconnect Equalization Optimization Methodology
 =====================================================
 
 :Version: |version|
