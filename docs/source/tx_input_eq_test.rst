@@ -71,5 +71,5 @@ For the host to apply new TX SI settings, the ``AdaptiveInputEqEnableTx`` (``10h
 
     TX Input EQ Registers
 
-TX Input EQ register control: ``Page 10h, Byte 153 – 159``, as defined in :numref:`cmis_tx_input_eq_reg`, can be used to control the TX input EQ settings.
+TX Input EQ register control: ``Page 10h, Byte 153 - 159``, as defined in :numref:`cmis_tx_input_eq_reg`, can be used to control the TX input EQ settings.
 
