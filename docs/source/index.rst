@@ -1,5 +1,5 @@
 =====================================================
-Interconnect Equalization Optimization Methodology
+Teledyne LeCroy Interconnect Equalization Optimization Methodology
 =====================================================
 
 :Version: |version|
