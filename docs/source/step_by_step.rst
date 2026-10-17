@@ -5,7 +5,7 @@ Prerequisite
 -------------
 
 1. **Python**: >= 3.11.
-2. **Download prooject**: Get`latest release <https://github.com/xenanetworks/cable-perf-test-suite/releases>`_.
+2. **Download project**: Get`latest release <https://github.com/xenanetworks/cable-perf-test-suite/releases>`_.
 3. **Install dependencies using pip**:
 
 .. code-block:: bash
